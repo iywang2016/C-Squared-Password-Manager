@@ -1,2 +1,5 @@
+node_modules
+salt.txt
 *.class
 *.log
+*.js
