@@ -1,3 +1,5 @@
+package com.c_squared.password_manager.model;
+
 import java.util.Map;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
