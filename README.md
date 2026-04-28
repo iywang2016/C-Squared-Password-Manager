@@ -36,6 +36,8 @@ git clone git@gitlab.cs.washington.edu:cse481s-26sp/c_squared.git
 ```
 
 ### 2. Run Backend
+
+Navigate to the backend directory
 ```bash
 cd backend/
 ```
@@ -53,6 +55,7 @@ The server runs on 8080 by default
 
 ### 3. Build Chrome Extension
 
+Navigate to the extension directory
 ```bash
 cd extension
 ```
