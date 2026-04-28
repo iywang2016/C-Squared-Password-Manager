@@ -67,4 +67,4 @@ npm i && npm run build
 1. Go to Chrome Extensions Dashboard at chrome://extensions/
 2. Toggle Dev Mode
 3. Click Load Unpacked and open the dist/
-4. Play around with the extension by clicking on the new icon directly
+4. Play around with the extension by clicking on the puzzle icon in the upper right of the browser tab (labeled "Extensions"), then clicking on the new icon
