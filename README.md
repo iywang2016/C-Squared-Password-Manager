@@ -1,4 +1,12 @@
-hi this is a readme
-hello s is a readme
-goodbye this was a readme
-me read
+# C_Squared Password Manager
+
+## Project Structure
+### backend/
+- Has all the springboot java stuff
+
+### extension/
+- Has all the google extension and TS stuff
+    - Start with google and expand to firefox later
+
+### shared/
+- Typescript types nothing cool

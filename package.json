@@ -1,9 +1,0 @@
-{
-  "type": "module",
-  "dependencies": {
-    "csprng": "^0.1.2"
-  },
-  "devDependencies": {
-    "@types/node": "^25.6.0"
-  }
-}
