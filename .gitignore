@@ -3,3 +3,4 @@ salt.txt
 *.class
 *.log
 *.js
+.DS_Store

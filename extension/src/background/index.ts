@@ -1,0 +1,1 @@
+console.log("Sanity Check: Background is running");
