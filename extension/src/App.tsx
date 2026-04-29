@@ -2,11 +2,15 @@ import { useState, useEffect } from 'react';
 
 export default function App() {
   const [output, setOutput] = useState("Hashing in progress");
+  let dummyPassword = "password"
+  if (Math.round(Math.random())) {
+    dummyPassword = "passwordpassword"
+  }
 
   // TODO: replace later with actual input and stuff just to test connects rn
   useEffect(() => {
     chrome.runtime.sendMessage(
-      { action: "hash", password: "password" },
+      { action: "HASH", password: dummyPassword },
       (response) => {
         if (response && response.success) {
           setOutput("Congrats on your new hash: " + response.hash);
