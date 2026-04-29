@@ -6,6 +6,14 @@ import manifest from "./public/manifest.json";
 export default defineConfig({
   plugins: [
     react(),
-    crx({ manifest })
+    crx({ manifest }),
   ],
+  build: {
+    outDir: 'dist',
+    rollupOptions: {
+      input: {
+        content: 'src/content/index.tsx'
+      }
+    }
+  }
 });

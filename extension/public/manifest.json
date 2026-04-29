@@ -2,18 +2,36 @@
   "manifest_version": 3,
   "name": "C_Squared Password Manager",
   "version": "1.0",
-  "permissions": ["storage", "tabs"],
-  "host_permissions": ["<all_urls>"],
+  "permissions": [
+    "storage",
+    "tabs"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
   "background": {
-    "service_worker": "src/background/index.js"
+    "service_worker": "src/background/index.ts"
   },
   "action": {
-    "default_popup": "index.html"
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["src/content/index.ts"]
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "src/content/index.tsx"
+      ]
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "index.html"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
     }
   ]
 }

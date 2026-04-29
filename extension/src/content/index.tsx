@@ -1,31 +1,36 @@
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import App from '../App';
+import '../App.css';
+
 console.log("Content Scraper Script Loaded");
 
 /**
  * Scrapes the current page for login fields.
  * Returns the DOM elements if found.
  */
-function findLoginFields() {
-  // Find the password field(s)
+export function findLoginFields() {
   const passwordFields = Array.from(document.querySelectorAll<HTMLInputElement>('input[type="password"]'));
-
-  if (passwordFields.length === 0) {
-    return null;
-  }
+  if (passwordFields.length === 0) return null;
 
   const passwordField = passwordFields[0];
-
-  // Find username/email field
   let usernameField: HTMLInputElement | null = null;
 
-  // If the html is well-formed they are in the same <form>
-  if (passwordField.form) {
-    usernameField = passwordField.form.querySelector<HTMLInputElement>('input[type="text"], input[type="email"]');
+  usernameField = document.querySelector<HTMLInputElement>(
+    'input[autocomplete="username"], input[autocomplete="email"]'
+  );
+
+  if (!usernameField && passwordField.form) {
+    usernameField = passwordField.form.querySelector<HTMLInputElement>(
+      'input[type="text"], input[type="email"], input:not([type])'
+    );
   }
 
-  // If no <form> wrapper look for the closest text/email input preceding the password field.
   if (!usernameField) {
-    const allTextInputs = Array.from(document.querySelectorAll<HTMLInputElement>('input[type="text"], input[type="email"]'));
-    for (const input of allTextInputs.reverse()) {
+    const allInputs = Array.from(document.querySelectorAll<HTMLInputElement>(
+      'input[type="text"], input[type="email"], input:not([type])'
+    ));
+    for (const input of allInputs.reverse()) {
       const position = passwordField.compareDocumentPosition(input);
       if (position & Node.DOCUMENT_POSITION_PRECEDING) {
         usernameField = input;
@@ -40,7 +45,7 @@ function findLoginFields() {
 /**
  * Fills an HTML input field and triggers the necessary DOM events
  */
-function fillField(element: HTMLInputElement, value: string) {
+export function fillField(element: HTMLInputElement, value: string) {
   element.value = value;
   element.dispatchEvent(new Event('input', { bubbles: true }));
   element.dispatchEvent(new Event('change', { bubbles: true }));
@@ -79,3 +84,22 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
   return true;
 });
+
+
+const rootDiv = document.createElement('div');
+rootDiv.id = 'c-squared-extension-root';
+rootDiv.style.position = 'fixed';
+rootDiv.style.top = '0';
+rootDiv.style.left = '0';
+rootDiv.style.width = '100vw';
+rootDiv.style.height = '100vh';
+rootDiv.style.pointerEvents = 'none';
+rootDiv.style.zIndex = '2147483647';
+document.body.appendChild(rootDiv);
+
+const root = createRoot(rootDiv);
+root.render(
+  <StrictMode>
+    <App />
+  </StrictMode>
+);

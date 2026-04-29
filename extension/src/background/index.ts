@@ -44,6 +44,14 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   return true;
 });
 
+chrome.action.onClicked.addListener((tab) => {
+  if (tab.id) {
+    chrome.tabs.sendMessage(tab.id, { type: "TOGGLE_UI" }).catch((err) => {
+      console.log("Failed to load script and popup", err);
+    });
+  }
+});
+
 
 /** * determine the strength of the given password by length
 * @param password - password to check
