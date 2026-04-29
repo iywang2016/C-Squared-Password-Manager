@@ -2,10 +2,10 @@
   "manifest_version": 3,
   "name": "C_Squared Password Manager",
   "version": "1.0",
-  "permissions": ["storage"],
-  "host_permissions": ["http://localhost:8080/*"],
+  "permissions": ["storage", "tabs"],
+  "host_permissions": ["<all_urls>"],
   "background": {
-    "service_worker": "background.js"
+    "service_worker": "src/background/index.js"
   },
   "action": {
     "default_popup": "index.html"
@@ -13,7 +13,7 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["content.js"]
+      "js": ["src/content/index.ts"]
     }
   ]
 }

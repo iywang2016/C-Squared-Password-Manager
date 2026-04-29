@@ -10,12 +10,15 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "csprng": "^0.1.2",
     "react": "^19.2.5",
     "react-dom": "^19.2.5"
   },
   "devDependencies": {
+    "@crxjs/vite-plugin": "^2.0.0-beta.33",
     "@eslint/js": "^10.0.1",
     "@types/chrome": "^0.1.40",
+    "@types/csprng": "^0.1.4",
     "@types/node": "^24.12.2",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
