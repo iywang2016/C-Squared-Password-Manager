@@ -50,7 +50,7 @@ public class MasterCredentialDAO {
    * @return         [salt, hashed and salted password] corresponding
    *                 to the username if it exists; null otherwise
    */
-  public Pair<String, String> verifyMasterCredentials(String username) {
+  public Pair<String, String> getMasterCredentials(String username) {
     Optional<MasterCredential> mc = masterCredentialRepository.findById(username);
     if (mc.isEmpty()) {
       return null;
