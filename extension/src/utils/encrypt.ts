@@ -93,3 +93,34 @@ export async function createAuthHash(masterKey: CryptoKey): Promise<string> {
   const hashBuffer = await window.crypto.subtle.digest("SHA-256", exportedKey);
   return buf2hex(hashBuffer);
 }
+
+/**
+ * Encrypts the plaintext using the masterKey, returns ciphertext as a string
+ *  @param masterKey - the AES-256 key used to encrypt and decrypt
+ *  @param plaintext - string (plaintext) of the user's password to be encrypted
+ */
+export async function encryptAES256(masterKey: CryptoKey, plaintext: string): Promise<string> {
+  // generate random iv (16 bytes)
+  let iv = window.crypto.getRandomValues(new Uint8Array(16));
+  let encoded = new TextEncoder().encode(plaintext);
+  // encrypt w 128-bit auth tag
+  const encrypted = await window.crypto.subtle.encrypt(
+          { name: 'AES-GCM', iv: iv, tagLength: 128}, masterKey, encoded);
+  return buf2hex(encrypted).toString();
+}
+
+/** ***UNFINISHED***
+ * Decrypts the encrypted password using the masterKey, returns plaintext password as a string
+ *  @param masterKey - the AES-256 key used to encrypt and decrypt
+ *  @param ciphertext - string (encrypted, as hex) of the user's password to be decrypted
+ *  @param iv - initialization vector used when encrypting this ciphertext - TODO: how to save/find it?
+ */
+export async function decryptAES256(masterKey: CryptoKey, ciphertext: string, iv : Uint8Array<ArrayBuffer>): Promise<string> {
+  // TODO: testing iv - remove hardcode later
+
+  // TODO: wanna first convert to hex, then encode?
+  let encoded = new TextEncoder().encode(ciphertext);
+
+  let decrypted = await window.crypto.subtle.decrypt({name: 'AES-GCM', iv: iv}, masterKey, encoded);
+  return new TextDecoder().decode(decrypted);
+}
