@@ -6,9 +6,11 @@ import jakarta.persistence.Id;
 import jakarta.persistence.ElementCollection;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
 
 @Data
 @NoArgsConstructor
+@AllArgsConstructor
 @Entity
 public class Passwords {
   // The user's master username and site domain,
