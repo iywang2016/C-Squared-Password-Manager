@@ -21,6 +21,82 @@ export function determineStrength(password: string): string[] {
 }
 
 /**
+ * returns true if either API has found this password in their databases; false otherwise
+ * @param password - plaintext string of the user's password to be checked
+ */
+async function findWithAPI(password: string): Promise<boolean> {
+  // first check w hashed
+  let hash = await sha1(password);
+  let res = await getHashSuffixes(hash.substring(0, 5));
+  if (hasMatch(hash.substring(5), res)) { return true; }
+
+  // then check w email database?
+
+  return false;
+}
+
+/**
+ * returns the sha1 hash of the given plaintext
+ * @param plaintext - text to be hashed
+ */
+async function sha1(plaintext: string): Promise<string> {
+  const data = new TextEncoder().encode(plaintext);
+  const hashed = await window.crypto.subtle.digest('SHA-1', data);
+  return hashToString(hashed);
+}
+
+/**
+ * returns string version of the given buffer/hash
+ * @param arrayBuffer - hash to turn into a string
+ */
+function hashToString(arrayBuffer : ArrayBuffer) {
+  const uint8View = new Uint8Array(arrayBuffer);
+  return Array.from(uint8View)
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+/**
+ * returns true if res has a matching hash suffix with a nonzero count
+ * (representing a likely-matching password in the database); returns false otherwise
+ *  @param hashSuffix - suffix of the user's currently-being-tested hashed password
+ *  @param res - contains suffixes and counts corresponding to the API response when 
+ *    querying with the hash prefix
+ */
+function hasMatch(hashSuffix: string, res: string[]): boolean {
+  for (let i = 0; i < res.length; i++) {
+    // formatted <HASH_SUFFIX>:<COUNT>
+    let curr = res[i];
+    let colon = curr.indexOf(":");
+    let suf = curr.substring(0, colon);
+    let count = Number(curr.substring(colon + 1));
+    if (hashSuffix === suf && count > 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * queries API of pawned passwords with the first 5 digits of this hash, returns response
+ * which contains all suffixes corresponding to that prefix, along with the count of 
+ * passwords in their database matching that prefix & suffix
+ *  @param hashPrefix - first 5 digits of the user's currently-being-tested hashed password
+ */
+function getHashSuffixes(hashPrefix: string): Promise<string[]> {
+  const headers: Headers = new Headers();
+  headers.set('Content-Type', 'application/json');
+  headers.set('Accept', 'application/json');
+  headers.set('Add-Padding', 'true'); // pads responses by random amount
+
+  let site: string = "https://api.pwnedpasswords.com/range/".concat(hashPrefix);
+  const req: RequestInfo = new Request(site, { method: 'GET', headers: headers});
+  return fetch(req)
+    .then(res => res.json())
+    .then(res => {return res as string[];}); // todo: prob need to modify - copied from example
+}
+
+/**
  * Converts a buffer to a Hex String.
  * Useful for sending salts and hashes
  */
@@ -106,7 +182,9 @@ export async function encryptAES256(masterKey: CryptoKey, plaintext: string): Pr
   // encrypt w 128-bit auth tag
   const encrypted = await window.crypto.subtle.encrypt(
           { name: 'AES-GCM', iv: iv, tagLength: 128}, masterKey, encoded);
-  return buf2hex(encrypted).toString();
+  // return buf2hex(encrypted).toString(); 
+  // todo: return tuple(?) w iv
+  return new TextDecoder().decode(encrypted);
 }
 
 /** ***UNFINISHED***
@@ -120,6 +198,7 @@ export async function decryptAES256(masterKey: CryptoKey, ciphertext: string, iv
 
   // TODO: wanna first convert to hex, then encode?
   let encoded = new TextEncoder().encode(ciphertext);
+  // let encoded = hex2buf(ciphertext);
 
   let decrypted = await window.crypto.subtle.decrypt({name: 'AES-GCM', iv: iv}, masterKey, encoded);
   return new TextDecoder().decode(decrypted);
