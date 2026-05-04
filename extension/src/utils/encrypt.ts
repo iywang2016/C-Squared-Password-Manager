@@ -122,12 +122,13 @@ async function getHashSuffixes(hashPrefix: string): Promise<string[]> {
 }
 
 /**
- * Converts a buffer to a Hex String.
- * Useful for sending salts and hashes
+ * Converts a buffer or Uint8Array to a Hex String
  */
-export function buf2hex(buffer: ArrayBuffer): string {
+export function buf2hex(buffer: ArrayBuffer | Uint8Array): string {
+  const uint8 = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+
   return Array.prototype.map.call(
-    new Uint8Array(buffer),
+    uint8,
     x => ('00' + x.toString(16)).slice(-2)
   ).join('');
 }

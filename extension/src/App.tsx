@@ -1,6 +1,8 @@
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 import { findLoginFields, fillField } from './content/index';
+import Login from './components/Login';
+import Register from './components/Register';
 
 export default function App() {
   const [isVisible, setIsVisible] = useState(false);
@@ -8,8 +10,10 @@ export default function App() {
   const [position, setPosition] = useState({ x: 20, y: 20 });
   const [isDragging, setIsDragging] = useState(false);
 
-  // mouse offset
+  const [currentView, setCurrentView] = useState<'login' | 'register' | 'autofill'>('login');
+
   const offset = useRef({ x: 0, y: 0 });
+  const popupRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleMessage = (message: any) => {
@@ -22,7 +26,6 @@ export default function App() {
     return () => chrome.runtime.onMessage.removeListener(handleMessage);
   }, []);
 
-  // Autofill logic
   const handleAutofill = async () => {
     const credentials = {
       username: "Testing Username",
@@ -48,7 +51,6 @@ export default function App() {
     }
   };
 
-  // Draggable Logic
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     setIsDragging(true);
     offset.current = {
@@ -61,10 +63,20 @@ export default function App() {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isDragging) return;
 
-      setPosition({
-        x: e.clientX - offset.current.x,
-        y: e.clientY - offset.current.y
-      });
+      let newX = e.clientX - offset.current.x;
+      let newY = e.clientY - offset.current.y;
+
+      if (popupRef.current) {
+        const rect = popupRef.current.getBoundingClientRect();
+
+        const maxX = window.innerWidth - rect.width;
+        const maxY = window.innerHeight - rect.height;
+
+        newX = Math.max(0, Math.min(newX, maxX));
+        newY = Math.max(0, Math.min(newY, maxY));
+      }
+
+      setPosition({ x: newX, y: newY });
     };
 
     const handleMouseUp = () => {
@@ -88,6 +100,7 @@ export default function App() {
 
   return (
     <div
+      ref={popupRef}
       className="floating-container"
       style={{
         left: `${position.x}px`,
@@ -96,17 +109,62 @@ export default function App() {
       }}
     >
       <div className="drag-handle" onMouseDown={handleMouseDown}></div>
+      <div className="popup-content" style={{ position: 'relative' }}>
 
-      <div className="popup-content">
+        {/* Close Button */}
+        <button
+          onClick={() => setIsVisible(false)}
+          style={{
+            position: 'absolute',
+            top: '10px',
+            right: '10px',
+            background: 'none',
+            border: 'none',
+            fontSize: '16px',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            padding: '5px'
+          }}
+          aria-label="Close"
+        >
+          ✕
+        </button>
+
         <h2>C_Squared PM</h2>
         <p className="status-text">{output}</p>
 
-        <button
-          className="autofill-button"
-          onClick={handleAutofill}
-        >
-          Autofill Current Site
-        </button>
+        <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '15px' }}>
+          <button
+            onClick={() => setCurrentView('login')}
+            style={{ fontWeight: currentView === 'login' ? 'bold' : 'normal' }}
+          >
+            Login
+          </button>
+          <button
+            onClick={() => setCurrentView('register')}
+            style={{ fontWeight: currentView === 'register' ? 'bold' : 'normal' }}
+          >
+            Register
+          </button>
+          <button
+            onClick={() => setCurrentView('autofill')}
+            style={{ fontWeight: currentView === 'autofill' ? 'bold' : 'normal' }}
+          >
+            Autofill
+          </button>
+        </div>
+
+        {currentView === 'login' && <Login />}
+        {currentView === 'register' && <Register />}
+        {currentView === 'autofill' && (
+          <button
+            className="autofill-button"
+            onClick={handleAutofill}
+            style={{ width: '100%', padding: '10px' }}
+          >
+            Autofill Current Site
+          </button>
+        )}
       </div>
     </div>
   );
