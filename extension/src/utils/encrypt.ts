@@ -199,9 +199,10 @@ export async function createAuthHash(masterKey: CryptoKey): Promise<string> {
  * Encrypts the plaintext using the masterKey
  * @param masterKey - the AES-256 key used to encrypt and decrypt
  * @param plaintext - string (plaintext) of the user's password to be encrypted
- * @returns promise of encrypted plaintext (aka ciphertext)
+ * @returns promise of tuple containing encrypted plaintext (aka ciphertext) 
+ *          and iv used to encrypt
  */
-export async function encryptAES256(masterKey: CryptoKey, plaintext: string): Promise<string> {
+export async function encryptAES256(masterKey: CryptoKey, plaintext: string): Promise<[string, Uint8Array]> {
   // generate random iv (16 bytes)
   let iv = window.crypto.getRandomValues(new Uint8Array(16));
   let encoded = new TextEncoder().encode(plaintext);
@@ -210,7 +211,7 @@ export async function encryptAES256(masterKey: CryptoKey, plaintext: string): Pr
           { name: 'AES-GCM', iv: iv, tagLength: 128}, masterKey, encoded);
   // return buf2hex(encrypted).toString(); 
   // todo: return tuple(?) w iv
-  return new TextDecoder().decode(encrypted);
+  return [new TextDecoder().decode(encrypted), iv];
 }
 
 /** ***UNFINISHED***
