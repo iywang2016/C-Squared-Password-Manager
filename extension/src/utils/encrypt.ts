@@ -21,8 +21,25 @@ export function determineStrength(password: string): string[] {
 }
 
 /**
- * returns true if either API has found this password in their databases; false otherwise
+ * generates and returns a secure master password with length equal to MIN_PASSWORD_LENGTH
+ * @returns master password
+ */
+export function generateMasterPassword(): string {
+  let chars = 
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-_=+[]{}<>?";
+  let rands = window.crypto.getRandomValues(new Uint8Array(MIN_PASSWORD_LENGTH));
+  let password = "";
+  for (let i = 0; i < MIN_PASSWORD_LENGTH; i++) {
+    password += chars.at(rands[i] % chars.length);
+  }
+  return password;
+}
+
+
+/** *********** UNFINISHED ***********
+ * checks if the password exists in the API
  * @param password - plaintext string of the user's password to be checked
+ * @returns promise resolving to true if the API has this password in its database, false otherwise
  */
 async function findWithAPI(password: string): Promise<boolean> {
   // first check w hashed
@@ -59,11 +76,12 @@ function hashToString(arrayBuffer : ArrayBuffer) {
 /**
  * returns true if res has a matching hash suffix with a nonzero count
  * (representing a likely-matching password in the database); returns false otherwise
- *  @param hashSuffix - suffix of the user's currently-being-tested hashed password
- *  @param res - contains suffixes and counts corresponding to the API response when 
+ * @param hashSuffix - suffix of the user's currently-being-tested hashed password
+ * @param res - contains suffixes and counts corresponding to the API response when 
  *    querying with the hash prefix
+ * @returns  true if res has a matching hash suffix with a nonzero count
  */
-function hasMatch(hashSuffix: string, res: string[]): boolean {
+export function hasMatch(hashSuffix: string, res: string[]): boolean {
   for (let i = 0; i < res.length; i++) {
     // formatted <HASH_SUFFIX>:<COUNT>
     let curr = res[i];
@@ -78,22 +96,29 @@ function hasMatch(hashSuffix: string, res: string[]): boolean {
 }
 
 /**
- * queries API of pawned passwords with the first 5 digits of this hash, returns response
- * which contains all suffixes corresponding to that prefix, along with the count of 
- * passwords in their database matching that prefix & suffix
- *  @param hashPrefix - first 5 digits of the user's currently-being-tested hashed password
+ * queries API of pawned passwords with the first 5 digits of this hash
+ * @param hashPrefix - first 5 digits of the user's currently-being-tested hashed password
+ * @returns response which contains all suffixes corresponding to that prefix, 
+ * along with the count of passwords in their database matching that prefix & suffix
  */
-function getHashSuffixes(hashPrefix: string): Promise<string[]> {
-  const headers: Headers = new Headers();
-  headers.set('Content-Type', 'application/json');
-  headers.set('Accept', 'application/json');
-  headers.set('Add-Padding', 'true'); // pads responses by random amount
-
-  let site: string = "https://api.pwnedpasswords.com/range/".concat(hashPrefix);
-  const req: RequestInfo = new Request(site, { method: 'GET', headers: headers});
-  return fetch(req)
-    .then(res => res.json())
-    .then(res => {return res as string[];}); // todo: prob need to modify - copied from example
+async function getHashSuffixes(hashPrefix: string): Promise<string[]> {
+  try {
+    const headers: Headers = new Headers();
+    headers.set('Content-Type', 'application/json');
+    headers.set('Accept', 'application/json');
+    headers.set('Add-Padding', 'true'); // pads responses by random amount
+  
+    let site: string = "https://api.pwnedpasswords.com/range/".concat(hashPrefix);
+    const req: RequestInfo = new Request(site, { method: 'GET', headers: headers});
+    // return fetch(req)
+    //   .then(res => res.json())
+    //   .then(res => {return res as string[];}); // todo: prob need to modify - copied from example
+    const resp = await fetch(req);
+    return resp.json().then(res => { return res as string[]; });
+  } catch {
+    console.error("Failed to access PwnedPasswords API");
+    return [];
+  }
 }
 
 /**
@@ -171,9 +196,10 @@ export async function createAuthHash(masterKey: CryptoKey): Promise<string> {
 }
 
 /**
- * Encrypts the plaintext using the masterKey, returns ciphertext as a string
- *  @param masterKey - the AES-256 key used to encrypt and decrypt
- *  @param plaintext - string (plaintext) of the user's password to be encrypted
+ * Encrypts the plaintext using the masterKey
+ * @param masterKey - the AES-256 key used to encrypt and decrypt
+ * @param plaintext - string (plaintext) of the user's password to be encrypted
+ * @returns promise of encrypted plaintext (aka ciphertext)
  */
 export async function encryptAES256(masterKey: CryptoKey, plaintext: string): Promise<string> {
   // generate random iv (16 bytes)
@@ -188,10 +214,11 @@ export async function encryptAES256(masterKey: CryptoKey, plaintext: string): Pr
 }
 
 /** ***UNFINISHED***
- * Decrypts the encrypted password using the masterKey, returns plaintext password as a string
- *  @param masterKey - the AES-256 key used to encrypt and decrypt
- *  @param ciphertext - string (encrypted, as hex) of the user's password to be decrypted
- *  @param iv - initialization vector used when encrypting this ciphertext - TODO: how to save/find it?
+ * Decrypts the encrypted password using the masterKey
+ * @param masterKey - the AES-256 key used to encrypt and decrypt
+ * @param ciphertext - string (encrypted, as hex) of the user's password to be decrypted
+ * @param iv - initialization vector used when encrypting this ciphertext - TODO: how to save/find it?
+ * @returns promise of decrypted ciphertext (aka plaintext)
  */
 export async function decryptAES256(masterKey: CryptoKey, ciphertext: string, iv : Uint8Array<ArrayBuffer>): Promise<string> {
   // TODO: testing iv - remove hardcode later
