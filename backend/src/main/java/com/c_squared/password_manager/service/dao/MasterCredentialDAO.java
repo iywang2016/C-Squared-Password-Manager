@@ -38,7 +38,7 @@ public class MasterCredentialDAO {
    *                 or phone number     
    */
   public void addMasterCredentials(String username, String pass,
-                                          String salt, String auth) {
+                                   String salt, String auth) {
     MasterCredential mc = new MasterCredential(username, pass, salt, auth);
     masterCredentialRepository.save(mc);
   }
