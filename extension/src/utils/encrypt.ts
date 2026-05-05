@@ -13,10 +13,6 @@ export function determineStrength(password: string): string[] {
     issues.push("Password is too short (minimum " + MIN_PASSWORD_LENGTH + " characters).");
   }
 
-  if (issues.length === 0) {
-    issues.push("No issues found.");
-  }
-
   return issues;
 }
 
