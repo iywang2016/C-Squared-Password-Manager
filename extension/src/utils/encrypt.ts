@@ -203,32 +203,25 @@ export async function createAuthHash(masterKey: CryptoKey): Promise<string> {
  * @returns promise of tuple containing encrypted plaintext (aka ciphertext) 
  *          and iv used to encrypt
  */
-export async function encryptAES256(masterKey: CryptoKey, plaintext: string): Promise<[string, Uint8Array]> {
+export async function encryptAES256(masterKey: CryptoKey, plaintext: string): Promise<[ArrayBuffer, Uint8Array]> {
   // generate random iv (16 bytes)
   let iv = window.crypto.getRandomValues(new Uint8Array(16));
   let encoded = new TextEncoder().encode(plaintext);
   // encrypt w 128-bit auth tag
   const encrypted = await window.crypto.subtle.encrypt(
           { name: 'AES-GCM', iv: iv, tagLength: 128}, masterKey, encoded);
-  // return buf2hex(encrypted).toString(); 
-  // todo: return tuple(?) w iv
-  return [new TextDecoder().decode(encrypted), iv];
+  return [encrypted, iv];
 }
 
-/** ***UNFINISHED***
+/**
  * Decrypts the encrypted password using the masterKey
  * @param masterKey - the AES-256 key used to encrypt and decrypt
- * @param ciphertext - string (encrypted, as hex) of the user's password to be decrypted
+ * @param ciphertext - encrypted user's password to be decrypted
  * @param iv - initialization vector used when encrypting this ciphertext - TODO: how to save/find it?
  * @returns promise of decrypted ciphertext (aka plaintext)
  */
-export async function decryptAES256(masterKey: CryptoKey, ciphertext: string, iv : Uint8Array<ArrayBuffer>): Promise<string> {
-  // TODO: testing iv - remove hardcode later
-
-  // TODO: wanna first convert to hex, then encode?
-  let encoded = new TextEncoder().encode(ciphertext);
-  // let encoded = hex2buf(ciphertext);
-
-  let decrypted = await window.crypto.subtle.decrypt({name: 'AES-GCM', iv: iv}, masterKey, encoded);
+export async function decryptAES256(masterKey: CryptoKey, ciphertext: ArrayBuffer, iv : Uint8Array<ArrayBuffer>): Promise<string> {
+  let decrypted = await window.crypto.subtle.decrypt(
+          {name: 'AES-GCM', iv: iv, tagLength: 128}, masterKey, ciphertext);
   return new TextDecoder().decode(decrypted);
 }
