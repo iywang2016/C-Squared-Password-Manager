@@ -22,7 +22,6 @@ import org.springframework.context.annotation.Bean;
 
 @RestController
 @RequestMapping("/database")
-@CrossOrigin(origins = "http://localhost:8080")
 public class DAOController {
   private final UserDomainsDAO userDomainsDao;
   private final PasswordsDAO passwordsDao;
