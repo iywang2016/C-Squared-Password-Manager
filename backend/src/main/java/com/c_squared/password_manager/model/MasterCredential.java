@@ -2,6 +2,7 @@ package com.c_squared.password_manager.model;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
@@ -10,6 +11,7 @@ import lombok.AllArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
+@Table(name = "MasterCredential")
 public class MasterCredential {
   // The user's master username.
   @Id

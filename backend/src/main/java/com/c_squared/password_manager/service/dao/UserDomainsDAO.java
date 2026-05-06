@@ -15,7 +15,7 @@ public class UserDomainsDAO {
     this.userDomainsRepository = userDomainsRepository;
   }
 
-    /**
+  /**
    * Queries the UserDomains database and attempts to fetch all domains on
    * which this master user has at least one login.
    * 
@@ -25,12 +25,12 @@ public class UserDomainsDAO {
    *                       least one login; may be empty if no such
    *                       domains are found
    */
-  public Set<String> getUserPasswords(String masterUsername) {
+  public Set<String> getUserDomains(String masterUsername) {
     Optional<UserDomains> domains = userDomainsRepository.findById(masterUsername);
-    Set<String> userPasswords = new HashSet<>();
+    Set<String> userDomains = new HashSet<>();
     if (domains.isPresent()) {
-      userPasswords.addAll(domains.get().getDomains());
+      userDomains.addAll(domains.get().getDomains());
     }
-    return userPasswords;
+    return userDomains;
   }
 }

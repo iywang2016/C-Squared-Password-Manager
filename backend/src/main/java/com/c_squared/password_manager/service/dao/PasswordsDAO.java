@@ -30,7 +30,7 @@ public class PasswordsDAO {
    */
   public boolean checkPasswordExists(String masterUsername, String password) {
     // Query UserDomains database to get all of the user's domains
-    Set<String> domains = userDomainsDao.getUserPasswords(masterUsername);
+    Set<String> domains = userDomainsDao.getUserDomains(masterUsername);
     for (String domain : domains) {
       Map<String, String> domainLogins = getUserPasswords(masterUsername, domain);
       if (domainLogins.values().contains(password)) {

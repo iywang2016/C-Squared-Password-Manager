@@ -3,6 +3,7 @@ package com.c_squared.password_manager.model;
 import java.util.Map;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import jakarta.persistence.ElementCollection;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -12,6 +13,7 @@ import lombok.AllArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
+@Table(name = "Passwords")
 public class Passwords {
   // The user's master username and site domain,
   // formatted as [username]#[domain].

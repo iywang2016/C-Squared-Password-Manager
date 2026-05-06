@@ -2,6 +2,7 @@ package com.c_squared.password_manager.service.dao;
 
 import java.util.Optional;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.apache.commons.lang3.tuple.Pair;
 import com.c_squared.password_manager.repository.MasterCredentialRepository;
 import com.c_squared.password_manager.model.MasterCredential;
@@ -37,7 +38,7 @@ public class MasterCredentialDAO {
    *                 or phone number     
    */
   public void addMasterCredentials(String username, String pass,
-                                          String salt, String auth) {
+                                   String salt, String auth) {
     MasterCredential mc = new MasterCredential(username, pass, salt, auth);
     masterCredentialRepository.save(mc);
   }

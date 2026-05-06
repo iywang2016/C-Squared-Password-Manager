@@ -3,6 +3,9 @@ import './App.css';
 import { findLoginFields, fillField } from './content/index';
 import Login from './components/Login';
 import Register from './components/Register';
+import { fetchPasswords } from "./utils/database";
+import { decryptAES256 } from './utils/encrypt';
+import { deriveMasterKey } from './utils/encrypt';
 
 export default function App() {
   const [isVisible, setIsVisible] = useState(false);
@@ -27,10 +30,53 @@ export default function App() {
   }, []);
 
   const handleAutofill = async () => {
-    const credentials = {
-      username: "Testing Username",
-      password: "1234"
+    console.log("Starting autofill");
+    const newLogin = {
+      username: "TestingUsername",
+      password: "TestingPassword"
     };
+
+    const addMessage = {
+      type: "ADD_PASSWORD",
+      masterUser: "TestingMasterUsername",
+      domain: "TestingDomain",
+      newLogin: newLogin
+    };
+
+    console.log("Sending ADD_PASSWORD message");
+
+    const addResponse = await chrome.runtime.sendMessage(addMessage);
+
+    console.log("Added password", addResponse);
+
+    const credentials = {
+      username: "placeholder",
+      password: "placeholder"
+    }
+
+    if (addResponse.success) {
+      const getMessage = {
+        type: "GET_PASSWORDS",
+        masterUser: "TestingMasterUsername",
+        domain: "TestingDomain"
+      }
+
+      console.log("Sending GET_PASSWORDS message");
+
+      const getResponse = await chrome.runtime.sendMessage(getMessage);
+
+      console.log("Fetched passwords", getResponse);
+    }
+    // if (response) {
+    //   const masterKey = await deriveMasterKey("placeholder", window.crypto.getRandomValues(new Uint8Array(16)));
+    //   const ciphertextArray = new TextEncoder().encode(response.logins.values().next().value).buffer;
+  
+    //   const credentials = {
+    //     username: response.logins.keys().next().value,
+    //     // TODO: placeholder AES key and IV
+    //     password: await decryptAES256(masterKey, ciphertextArray, window.crypto.getRandomValues(new Uint8Array(16)))
+    //   };
+    // }
 
     try {
       const fields = findLoginFields();

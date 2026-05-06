@@ -41,6 +41,42 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     }
   }
 
+  else if (message.type === "ADD_PASSWORD") {
+    console.log("ADD_PASSWORD message received");
+    const url = `http://localhost:8080/database/add_password/${message.masterUser}/${message.domain}`;
+
+    fetch(url, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(message.newLogin)
+    })
+    .then(response => response.text())
+    .then(data => {
+      sendResponse({ success: true, data: data });
+    })
+    .catch(error => {
+      console.error("Could not add password", error);
+      sendResponse({ success: false, error: error.message });
+    });
+    return true;
+  }
+
+  else if (message.type === "GET_PASSWORDS") {
+    console.log("GET_PASSWORDS message received");
+    const url = `http://localhost:8080/database/get_passwords/${message.masterUser}/${message.domain}`;
+
+    fetch(url)
+    .then(response => response.text())
+    .then(data => {
+      sendResponse({ success: true, data: data });
+    })
+    .catch(error => {
+      console.error("Could not add password", error);
+      sendResponse({ success: false, error: error.message });
+    });
+    return true;
+  }
+
   return true;
 });
 
@@ -53,11 +89,12 @@ chrome.action.onClicked.addListener((tab) => {
 });
 
 
-/** * determine the strength of the given password by length
-* @param password - password to check
-* @return issue - list of issues with the given password
-* or an empty array if nothing is wrong
-*/
+/**
+ * determine the strength of the given password by length
+ * @param password - password to check
+ * @return issue - list of issues with the given password
+ * or an empty array if nothing is wrong
+ */
 function determineStrength(password: string): string[] {
   const issues: string[] = [];
   if (password.length < MIN_PASSWORD_LENGTH) {
