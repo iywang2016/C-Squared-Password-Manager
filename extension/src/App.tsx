@@ -36,7 +36,7 @@ export default function App() {
       password: "TestingPassword"
     };
 
-    const message = {
+    const addMessage = {
       type: "ADD_PASSWORD",
       masterUser: "TestingMasterUsername",
       domain: "TestingDomain",
@@ -45,16 +45,28 @@ export default function App() {
 
     console.log("Sending ADD_PASSWORD message");
 
-    const response = await chrome.runtime.sendMessage(message);
+    const addResponse = await chrome.runtime.sendMessage(addMessage);
 
-    console.log("Added password", response);
+    console.log("Added password", addResponse);
 
-    // const response = await fetch(`/database/get_passwords/${masterUser}/${domain}`);
-    // console.log(response);
     const credentials = {
-        username: "placeholder",
-        password: "placeholder"
+      username: "placeholder",
+      password: "placeholder"
+    }
+
+    if (addResponse.success) {
+      const getMessage = {
+        type: "GET_PASSWORDS",
+        masterUser: "TestingMasterUsername",
+        domain: "TestingDomain"
       }
+
+      console.log("Sending GET_PASSWORDS message");
+
+      const getResponse = await chrome.runtime.sendMessage(getMessage);
+
+      console.log("Fetched passwords", getResponse);
+    }
     // if (response) {
     //   const masterKey = await deriveMasterKey("placeholder", window.crypto.getRandomValues(new Uint8Array(16)));
     //   const ciphertextArray = new TextEncoder().encode(response.logins.values().next().value).buffer;

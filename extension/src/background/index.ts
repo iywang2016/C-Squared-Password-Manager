@@ -61,6 +61,22 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true;
   }
 
+  else if (message.type === "GET_PASSWORDS") {
+    console.log("GET_PASSWORDS message received");
+    const url = `http://localhost:8080/database/get_passwords/${message.masterUser}/${message.domain}`;
+
+    fetch(url)
+    .then(response => response.text())
+    .then(data => {
+      sendResponse({ success: true, data: data });
+    })
+    .catch(error => {
+      console.error("Could not add password", error);
+      sendResponse({ success: false, error: error.message });
+    });
+    return true;
+  }
+
   return true;
 });
 
