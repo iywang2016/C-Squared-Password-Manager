@@ -9,13 +9,13 @@ export default function Shame(props:any) {
   }
   let size = 12;
 
-  useEffect(() => {
-  const interval = setInterval(() => {
-    size = size + size;
-  }, 2000);
+  // useEffect(() => {
+  // const interval = setInterval(() => {
+  //   size = size + size;
+  // }, 2000);
 
-  return () => clearInterval(interval);
-  }, []);
+  // return () => clearInterval(interval);
+  // }, []);
   
   useEffect(() => {
     if (feedbackText === "I understand my password was weak, I promise to do better next time.") {

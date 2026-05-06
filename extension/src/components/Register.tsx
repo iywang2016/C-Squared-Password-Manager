@@ -28,18 +28,17 @@ export default function Register() {
     setStatus("Generating something");
 
     try {
-      const salt = generateSalt();
-
       // Before encrypting and allowing password, check strength and shame first
       if (determineStrength(masterPass).length != 0) {
         setStatus("That was very shameful :(");
         setShowShame(true)
       } else {
         setShowShame(false);
-
+        
+        const salt = generateSalt();
         const masterKey = await deriveMasterKey(masterPass, salt);
         const authHash = await createAuthHash(masterKey);
-
+        
         // Dummy route must implement later
         const registerResponse = await fetch(`http://localhost:8080/api/register`, {
           method: 'POST',
