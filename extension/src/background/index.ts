@@ -53,11 +53,12 @@ chrome.action.onClicked.addListener((tab) => {
 });
 
 
-/** * determine the strength of the given password by length
-* @param password - password to check
-* @return issue - list of issues with the given password
-* or an empty array if nothing is wrong
-*/
+/**
+ * determine the strength of the given password by length
+ * @param password - password to check
+ * @return issue - list of issues with the given password
+ * or an empty array if nothing is wrong
+ */
 function determineStrength(password: string): string[] {
   const issues: string[] = [];
   if (password.length < MIN_PASSWORD_LENGTH) {

@@ -3,6 +3,9 @@ import './App.css';
 import { findLoginFields, fillField } from './content/index';
 import Login from './components/Login';
 import Register from './components/Register';
+import { fetchPasswords } from "./utils/database";
+import { decryptAES256 } from './utils/encrypt';
+import { deriveMasterKey } from './utils/encrypt';
 
 export default function App() {
   const [isVisible, setIsVisible] = useState(false);
@@ -27,10 +30,25 @@ export default function App() {
   }, []);
 
   const handleAutofill = async () => {
+    const masterUser = "TestingMasterUsername";
+    const domain = "TestingDomain";
+
+    const response = await fetchPasswords(masterUser, domain);
     const credentials = {
-      username: "Testing Username",
-      password: "1234"
-    };
+        username: "placeholder",
+        password: "placeholder"
+      }
+    if (response) {
+      const masterKey = await deriveMasterKey("placeholder", window.crypto.getRandomValues(new Uint8Array(16)));
+      const ciphertextArray = new TextEncoder().encode(response.logins.values().next().value).buffer;
+  
+      const credentials = {
+        username: response.logins.keys().next().value,
+        // TODO: placeholder AES key and IV
+        password: await decryptAES256(masterKey, ciphertextArray, window.crypto.getRandomValues(new Uint8Array(16)))
+      };
+    } else {
+    }
 
     try {
       const fields = findLoginFields();

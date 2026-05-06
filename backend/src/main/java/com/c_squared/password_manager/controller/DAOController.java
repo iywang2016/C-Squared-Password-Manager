@@ -17,7 +17,7 @@ import com.c_squared.password_manager.service.dto.NewLoginDTO;
 import com.c_squared.password_manager.service.dto.MasterCredentialDTO;
 
 @RestController
-@RequestMapping("database/")
+@RequestMapping("/database")
 @CrossOrigin(origins = "http://localhost:8080")
 public class DAOController {
   private final UserDomainsDAO userDomainsDao;
@@ -43,7 +43,7 @@ public class DAOController {
     return passwordsDao.checkPasswordExists(masterUsername, password);
   }
 
-  @GetMapping("get_passwords/{masterUsername}/{domain}")
+  @GetMapping("/get_passwords/{masterUsername}/{domain}")
   public Map<String, String> getUserPasswords(@PathVariable String masterUsername,
                                               @PathVariable String domain) {
     return passwordsDao.getUserPasswords(masterUsername, domain);

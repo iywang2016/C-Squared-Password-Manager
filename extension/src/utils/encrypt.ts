@@ -1,7 +1,8 @@
 const ITERATIONS = 600000; // OWASP
 const MIN_PASSWORD_LENGTH: number = 15; // NIST
 
-/** * Determine the strength of the given password by length based on NIST guidelines.
+/**
+ *  Determine the strength of the given password by length based on NIST guidelines.
  *  All passwords must be checked with this function before stored
  *  @param password - password to check
  *  @return string[] - list of issues with the given password. Empty means valid.
