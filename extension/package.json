@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test": "vitest"
+    "test": "vitest --no-file-parallelism"
   },
   "dependencies": {
     "csprng": "^0.1.2",
