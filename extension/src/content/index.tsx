@@ -17,7 +17,7 @@ export function findLoginFields() {
   let usernameField: HTMLInputElement | null = null;
 
   usernameField = document.querySelector<HTMLInputElement>(
-    'input[autocomplete="username"], input[autocomplete="email"]'
+    'input[required][autocomplete="username"], input[required][autocomplete="email"]'
   );
 
   if (!usernameField && passwordField.form) {

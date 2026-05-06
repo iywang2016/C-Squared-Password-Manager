@@ -94,8 +94,11 @@ export default function App() {
       const fields = findLoginFields();
 
       if (fields) {
-        if (!fields.usernameField || !fields.passwordField ||
-            !fields.usernameField.value || !fields.passwordField.value ||
+        if (!fields.usernameField || !fields.passwordField) {
+          setOutput("Could not find username or password field");
+          return;
+        }
+        if (!fields.usernameField.value || !fields.passwordField.value ||
             fields.usernameField.value.length == 0 || fields.passwordField.value.length == 0) {
           setOutput("You don't have a username and password filled in <:(");
           return;
