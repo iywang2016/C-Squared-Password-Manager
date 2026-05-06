@@ -30,21 +30,27 @@ export default function App() {
   }, []);
 
   const handleAutofill = async () => {
-    const masterUser = "TestingMasterUsername";
-    const domain = "TestingDomain";
+    console.log("Starting autofill");
     const newLogin = {
       username: "TestingUsername",
       password: "TestingPassword"
     };
 
-    await fetch(`http://attu3.cs.washington.edu/database/add_password/${masterUser}/${domain}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(newLogin)
-    });
+    const message = {
+      type: "ADD_PASSWORD",
+      masterUser: "TestingMasterUsername",
+      domain: "TestingDomain",
+      newLogin: newLogin
+    };
 
-    const response = await fetch(`http://attu3.cs.washington.edu/database/get_passwords/${masterUser}/${domain}`);
-    console.log(response);
+    console.log("Sending ADD_PASSWORD message");
+
+    const response = await chrome.runtime.sendMessage(message);
+
+    console.log("Added password", response);
+
+    // const response = await fetch(`/database/get_passwords/${masterUser}/${domain}`);
+    // console.log(response);
     const credentials = {
         username: "placeholder",
         password: "placeholder"

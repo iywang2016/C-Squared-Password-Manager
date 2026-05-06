@@ -15,6 +15,10 @@ import com.c_squared.password_manager.service.dao.PasswordsDAO;
 import com.c_squared.password_manager.service.dao.MasterCredentialDAO;
 import com.c_squared.password_manager.service.dto.NewLoginDTO;
 import com.c_squared.password_manager.service.dto.MasterCredentialDTO;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.context.annotation.Bean;
 
 @RestController
 @RequestMapping("/database")
@@ -30,6 +34,13 @@ public class DAOController {
     this.userDomainsDao = userDomainsDao;
     this.passwordsDao = passwordsDao;
     this.masterCredentialDao = masterCredentialDao;
+  }
+
+  @Bean
+  public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+      http.authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
+        .csrf(AbstractHttpConfigurer::disable);
+      return http.build();
   }
 
   @GetMapping("domains/{masterUsername}")
@@ -49,7 +60,7 @@ public class DAOController {
     return passwordsDao.getUserPasswords(masterUsername, domain);
   }
 
-  @PutMapping("add_password/{masterUsername}/{domain}")
+  @PutMapping("/add_password/{masterUsername}/{domain}")
   public void addNewPassword(@PathVariable String masterUsername,
                              @PathVariable String domain,
                              @RequestBody NewLoginDTO newLogin) {
