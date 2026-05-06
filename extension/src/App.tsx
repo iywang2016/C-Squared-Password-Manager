@@ -32,23 +32,33 @@ export default function App() {
   const handleAutofill = async () => {
     const masterUser = "TestingMasterUsername";
     const domain = "TestingDomain";
+    const newLogin = {
+      username: "TestingUsername",
+      password: "TestingPassword"
+    };
 
-    const response = await fetchPasswords(masterUser, domain);
+    await fetch(`http://attu3.cs.washington.edu/database/add_password/${masterUser}/${domain}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newLogin)
+    });
+
+    const response = await fetch(`http://attu3.cs.washington.edu/database/get_passwords/${masterUser}/${domain}`);
+    console.log(response);
     const credentials = {
         username: "placeholder",
         password: "placeholder"
       }
-    if (response) {
-      const masterKey = await deriveMasterKey("placeholder", window.crypto.getRandomValues(new Uint8Array(16)));
-      const ciphertextArray = new TextEncoder().encode(response.logins.values().next().value).buffer;
+    // if (response) {
+    //   const masterKey = await deriveMasterKey("placeholder", window.crypto.getRandomValues(new Uint8Array(16)));
+    //   const ciphertextArray = new TextEncoder().encode(response.logins.values().next().value).buffer;
   
-      const credentials = {
-        username: response.logins.keys().next().value,
-        // TODO: placeholder AES key and IV
-        password: await decryptAES256(masterKey, ciphertextArray, window.crypto.getRandomValues(new Uint8Array(16)))
-      };
-    } else {
-    }
+    //   const credentials = {
+    //     username: response.logins.keys().next().value,
+    //     // TODO: placeholder AES key and IV
+    //     password: await decryptAES256(masterKey, ciphertextArray, window.crypto.getRandomValues(new Uint8Array(16)))
+    //   };
+    // }
 
     try {
       const fields = findLoginFields();
