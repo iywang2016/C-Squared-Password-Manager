@@ -18,10 +18,10 @@ export function determineStrength(password: string): string[] {
 }
 
 /**
- * generates and returns a secure master password with length equal to MIN_PASSWORD_LENGTH
+ * generates and returns a secure password with length equal to MIN_PASSWORD_LENGTH
  * @returns master password
  */
-export function generateMasterPassword(): string {
+export function generatePassword(): string {
   let chars = 
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-_=+[]{}<>?";
   let rands = window.crypto.getRandomValues(new Uint8Array(MIN_PASSWORD_LENGTH));

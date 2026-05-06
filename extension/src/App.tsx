@@ -1,22 +1,25 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 import { findLoginFields, fillField } from './content/index';
+import { determineStrength, generatePassword } from './utils/encrypt';
 import Login from './components/Login';
 import Register from './components/Register';
-import { fetchPasswords } from "./utils/database";
-import { decryptAES256 } from './utils/encrypt';
-import { deriveMasterKey } from './utils/encrypt';
+import Shame from './components/Shame';
 
 export default function App() {
   const [isVisible, setIsVisible] = useState(false);
   const [output, setOutput] = useState("Welcome Back");
   const [position, setPosition] = useState({ x: 20, y: 20 });
   const [isDragging, setIsDragging] = useState(false);
+  const [showShame, setShowShame] = useState(false);
 
-  const [currentView, setCurrentView] = useState<'login' | 'register' | 'autofill'>('login');
+  const [currentView, setCurrentView] = useState<'login' | 'register' | 'autofill' | 'save'>('login');
 
   const offset = useRef({ x: 0, y: 0 });
   const popupRef = useRef<HTMLDivElement>(null);
+
+  const masterUser = "TestingMasterUsername";
+  const testingDomain = "TestingDomain";
 
   useEffect(() => {
     const handleMessage = (message: any) => {
@@ -31,42 +34,31 @@ export default function App() {
 
   const handleAutofill = async () => {
     console.log("Starting autofill");
-    const newLogin = {
-      username: "TestingUsername",
-      password: "TestingPassword"
-    };
 
-    const addMessage = {
-      type: "ADD_PASSWORD",
-      masterUser: "TestingMasterUsername",
-      domain: "TestingDomain",
-      newLogin: newLogin
-    };
+    const getMessage = {
+      type: "GET_PASSWORDS",
+      masterUser: masterUser,
+      domain: testingDomain
+    }
 
-    console.log("Sending ADD_PASSWORD message");
+    console.log("Sending GET_PASSWORDS message");
 
-    const addResponse = await chrome.runtime.sendMessage(addMessage);
+    const response = await chrome.runtime.sendMessage(getMessage);
 
-    console.log("Added password", addResponse);
+    console.log("Fetched passwords", response);
+
+    if (!response.success) {
+      setOutput("Could not find applicable login information: " + response.error);
+      return;
+    }
+
+    const loginsMap = new Map<string, string>(Object.entries(JSON.parse(response.data)));
 
     const credentials = {
-      username: "placeholder",
-      password: "placeholder"
-    }
+      username: loginsMap.keys().next().value,
+      password: loginsMap.values().next().value,
+    };
 
-    if (addResponse.success) {
-      const getMessage = {
-        type: "GET_PASSWORDS",
-        masterUser: "TestingMasterUsername",
-        domain: "TestingDomain"
-      }
-
-      console.log("Sending GET_PASSWORDS message");
-
-      const getResponse = await chrome.runtime.sendMessage(getMessage);
-
-      console.log("Fetched passwords", getResponse);
-    }
     // if (response) {
     //   const masterKey = await deriveMasterKey("placeholder", window.crypto.getRandomValues(new Uint8Array(16)));
     //   const ciphertextArray = new TextEncoder().encode(response.logins.values().next().value).buffer;
@@ -96,6 +88,58 @@ export default function App() {
       setOutput("Bad login do better next time >:( " + (error.message || "Unknown error"));
     }
   };
+
+  const handleSave = async () => {
+    try {
+      const fields = findLoginFields();
+
+      if (fields) {
+        if (!fields.usernameField || !fields.passwordField ||
+            !fields.usernameField.value || !fields.passwordField.value ||
+            fields.usernameField.value.length == 0 || fields.passwordField.value.length == 0) {
+          setOutput("You don't have a username and password filled in <:(");
+          return;
+        }
+        const username = fields.usernameField.value;
+        const password = fields.passwordField.value;
+
+        if (determineStrength(password).length != 0) {
+          setOutput("That was very shameful :(");
+          setShowShame(true);
+          // Set password input field to CSPRN
+          const betterPassword = generatePassword();
+          fillField(fields.passwordField, betterPassword);
+        } else {
+          setShowShame(false);
+
+          // TODO: encryption
+          const newLogin = {
+            username: username,
+            password: password
+          }
+
+          const addMessage = {
+            type: "ADD_PASSWORD",
+            masterUser: masterUser,
+            domain: testingDomain,
+            newLogin: newLogin
+          };
+    
+          console.log("Sending ADD_PASSWORD message");
+    
+          const response = await chrome.runtime.sendMessage(addMessage);
+    
+          if (response.success) {
+            setOutput("Successfully saved username " + username + " and password " + password); 
+          } else {
+            setOutput("Failed to save username :( error: " + response.error);
+          }
+        }
+      }
+    } catch (error: any) {
+      setOutput("Bad login do better next time >:( " + (error.message || "Unknown error"));
+    }
+  }
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     setIsDragging(true);
@@ -198,6 +242,12 @@ export default function App() {
           >
             Autofill
           </button>
+          <button
+            onClick={() => setCurrentView('save')}
+            style={{ fontWeight: currentView === 'save' ? 'bold' : 'normal' }}
+          >
+            Save Password
+          </button>
         </div>
 
         {currentView === 'login' && <Login />}
@@ -210,6 +260,20 @@ export default function App() {
           >
             Autofill Current Site
           </button>
+        )}
+        {currentView === 'save' && (
+          <div className="register-component">
+            {!showShame ? (<button
+                className="save-button"
+                onClick={handleSave}
+                style={{ width: '100%', padding: '10px' }}
+              >
+                Save Password On Current Site
+              </button>
+            ) : (
+              <Shame setShame={setShowShame}/>
+            )}
+          </div>
         )}
       </div>
     </div>
