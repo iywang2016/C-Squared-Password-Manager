@@ -156,6 +156,10 @@ export default function App() {
     }
   }
 
+  const handleLogOut = async () => {
+    loginState.masterUser = "";
+  }
+
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     setIsDragging(true);
     offset.current = {
@@ -233,6 +237,24 @@ export default function App() {
           aria-label="Close"
         >
           ✕
+        </button>
+
+        <button
+          onClick={() => handleLogOut()}
+          style={{
+            position: 'absolute',
+            top: '10px',
+            right: '40px',
+            background: 'none',
+            border: 'none',
+            fontSize: '16px',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            padding: '5px'
+          }}
+          aria-label="Log Out"
+        >
+          Log Out
         </button>
 
         <h2>C_Squared PM</h2>
