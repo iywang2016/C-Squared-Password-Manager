@@ -33,4 +33,18 @@ public class UserDomainsDAO {
     }
     return userDomains;
   }
+
+  public void addUserDomain(String masterUsername, String domain) {
+    Optional<UserDomains> domains = userDomainsRepository.findById(masterUsername);
+    if (domains.isPresent()) {
+      UserDomains currDomains = domains.get();
+      currDomains.getDomains().add(domain);
+      userDomainsRepository.save(currDomains);
+    } else {
+      Set<String> userDomains = new HashSet<>();
+      userDomains.add(domain);
+      UserDomains newDomain = new UserDomains(masterUsername, userDomains);
+      userDomainsRepository.save(newDomain);
+    }
+  }
 }

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 import { findLoginFields, fillField } from './content/index';
-import { decryptAES256, deriveMasterKey, determineStrength, encryptAES256, generatePassword, hex2buf } from './utils/encrypt';
+import { decryptAES256, determineStrength, encryptAES256, encryptAES256WithIV, generatePassword, hex2buf, buf2hex } from './utils/encrypt';
 import Login from './components/Login';
 import Register from './components/Register';
 import Shame from './components/Shame';
@@ -90,24 +90,12 @@ export default function App() {
 
     console.log("Starting autofill");
 
-    const getMessage = {
-      type: "GET_PASSWORDS",
-      masterUser: loginState.masterUser,
-      domain: domain
-    }
+    const loginsMap = await getPasswords(domain);
 
-    console.log("Sending GET_PASSWORDS message");
-
-    const response = await chrome.runtime.sendMessage(getMessage);
-
-    console.log("Fetched passwords", response);
-
-    if (!response.success) {
-      setOutput("Error fetching applicable login information: " + response.error);
+    if (!loginsMap) {
+      setOutput("Error fetching applicable login information");
       return;
     }
-
-    const loginsMap = new Map<string, string>(Object.entries(JSON.parse(response.data)));
 
     if (loginsMap.size === 0) {
       setOutput("No logins saved for this site yet!");
@@ -201,6 +189,34 @@ export default function App() {
         } else {
           setShowShame(false);
 
+          const getDomainsMessage = {
+            type: "GET_DOMAINS",
+            masterUser: loginState.masterUser
+          };
+
+          const getDomainsResponse = await chrome.runtime.sendMessage(getDomainsMessage);
+          if (!getDomainsResponse.success) {
+            setOutput("Could not fetch domains for account. Error: " + getDomainsResponse.error);
+            return;
+          }
+
+          const domainSet = new Set<string>(JSON.parse(getDomainsResponse.data));
+          for (const domain of domainSet) {
+            const passwordsMap = await getPasswords(domain);
+            if (!passwordsMap || passwordsMap.size === 0) continue;
+            for (const passwordAndIv of passwordsMap.values()) {
+              const iv = hex2buf(passwordAndIv.split("#")[1]);
+
+              const encryptedPass = await encryptAES256WithIV(loginState.masterKey, password, iv);
+              console.log("Found " + passwordAndIv);
+              console.log("Made " + encryptedPass + " and " + iv);
+              if ((encryptedPass + "#" + buf2hex(iv)) === passwordAndIv) {
+                setOutput("You have already used this password before! Choose a different one.");
+                return;
+              }
+            }
+          }
+
           const getSaltMessage = {
             type: "GET_MASTER",
             masterUser: loginState.masterUser
@@ -213,7 +229,7 @@ export default function App() {
             return;
           }
 
-          if (!getSaltResponse.data || getSaltResponse.data.length == 0) {
+          if (!getSaltResponse.data) {
             // Couldn't find master user in database
             setOutput("Could not find master username " + loginState.masterUser);
             return;
@@ -228,7 +244,6 @@ export default function App() {
 
           const encryptionResult = await encryptAES256(loginState.masterKey, password);
 
-          // TODO: encryption
           const newLogin = {
             username: username,
             passwordAndIv: encryptionResult.encryptedPass + "#" + encryptionResult.iv,
@@ -260,6 +275,27 @@ export default function App() {
   const handleLogOut = async () => {
     loginState.masterUser = undefined;
     loginState.masterKey = undefined;
+  }
+
+  const getPasswords = async (domain: string): Promise<Map<string, string> | undefined> => {
+    const getMessage = {
+      type: "GET_PASSWORDS",
+      masterUser: loginState.masterUser,
+      domain: domain
+    }
+
+    console.log("Sending GET_PASSWORDS message");
+
+    const response = await chrome.runtime.sendMessage(getMessage);
+
+    console.log("Fetched passwords", response);
+
+    if (!response.success) {
+      return;
+    }
+
+    const loginsMap = new Map<string, string>(Object.entries(JSON.parse(response.data)));
+    return loginsMap;
   }
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {

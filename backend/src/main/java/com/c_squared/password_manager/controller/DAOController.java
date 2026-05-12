@@ -46,9 +46,14 @@ public class DAOController {
       return http.build();
   }
 
-  @GetMapping("domains/{masterUsername}")
+  @GetMapping("get_domains/{masterUsername}")
   public Set<String> getUserDomains(@PathVariable String masterUsername) {
     return userDomainsDao.getUserDomains(masterUsername);
+  }
+
+  @PutMapping("add_domain/{masterUsername}")
+  public void addUserDomain(@PathVariable String masterUsername, @RequestBody String domain) {
+    userDomainsDao.addUserDomain(masterUsername, domain);
   }
 
   @GetMapping("check_password_exists/{masterUsername}/{password}")
@@ -89,7 +94,6 @@ public class DAOController {
   @PutMapping("add_master/{masterUsername}")
   public void addMasterCredentials(@PathVariable String masterUsername,
                                    @RequestBody MasterCredentialDTO newMaster) {
-    logger.info("Username " + masterUsername + " with " + newMaster.getPass());
     masterCredentialDao.addMasterCredentials(masterUsername,
                                              newMaster.getPass(),
                                              newMaster.getSalt(),

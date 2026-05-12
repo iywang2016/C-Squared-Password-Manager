@@ -219,6 +219,21 @@ export async function encryptAES256(masterKey: CryptoKey, plaintext: string): Pr
 }
 
 /**
+ * Encrypts the plaintext using the masterKey and IV.
+ * @param masterKey - the AES-256 key used to encrypt and decrypt
+ * @param plaintext - string (plaintext) of the user's password to be encrypted
+ * @param iv - initialization vector to be used to encrypt this plaintext
+ * @returns promise of encrypted plaintext
+ */
+export async function encryptAES256WithIV(masterKey: CryptoKey, plaintext: string, iv: Uint8Array<ArrayBuffer>): Promise<string> {
+  let encoded = new TextEncoder().encode(plaintext);
+  // encrypt w 128-bit auth tag
+  const encrypted = await window.crypto.subtle.encrypt(
+          { name: 'AES-GCM', iv: iv, tagLength: 128}, masterKey, encoded);
+  return buf2hex(encrypted);
+}
+
+/**
  * Decrypts the encrypted password using the masterKey
  * @param masterKey - the AES-256 key used to encrypt and decrypt
  * @param ciphertext - encrypted user's password to be decrypted

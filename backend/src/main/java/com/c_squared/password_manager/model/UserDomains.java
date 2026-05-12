@@ -7,9 +7,11 @@ import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Table;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
 
 @Data
 @NoArgsConstructor
+@AllArgsConstructor
 @Entity
 @Table(name = "UserDomains")
 public class UserDomains {

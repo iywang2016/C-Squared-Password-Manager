@@ -43,9 +43,9 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
   else if (message.type === "ADD_PASSWORD") {
     console.log("ADD_PASSWORD message received");
-    const url = `http://localhost:8080/database/add_password/${message.masterUser}/${message.domain}`;
+    const passwordUrl = `http://localhost:8080/database/add_password/${message.masterUser}/${message.domain}`;
 
-    fetch(url, {
+    fetch(passwordUrl, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(message.newLogin)
@@ -58,6 +58,23 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       console.error("Could not add password", error);
       sendResponse({ success: false, error: error.message });
     });
+
+    const domainUrl = `http://localhost:8080/database/add_domain/${message.masterUser}`;
+
+    fetch(domainUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(message.domain)
+    })
+    .then(response => response.text())
+    .then(data => {
+      sendResponse({ success: true, data: data });
+    })
+    .catch(error => {
+      console.error("Could not add domain", error);
+      sendResponse({ success: false, error: error.message });
+    });
+
     return true;
   }
 
@@ -126,6 +143,23 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     })
     .catch(error => {
       console.error("Could not check for master user", error);
+      sendResponse({ success: false, error: error.message });
+    });
+    
+    return true;
+  }
+
+  else if (message.type === "GET_DOMAINS") {
+    console.log("GET_DOMAINS message received");
+    const url = `http://localhost:8080/database/get_domains/${message.masterUser}`;
+
+    fetch(url)
+    .then(response => response.text())
+    .then(data => {
+      sendResponse({ success: true, data: data });
+    })
+    .catch(error => {
+      console.error("Could not get domains for master user", error);
       sendResponse({ success: false, error: error.message });
     });
     
