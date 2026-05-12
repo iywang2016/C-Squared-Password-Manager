@@ -68,7 +68,7 @@ public class DAOController {
                              @PathVariable String domain,
                              @RequestBody NewLoginDTO newLogin) {
     passwordsDao.addNewPassword(masterUsername, domain,
-                                newLogin.getUsername(), newLogin.getPassword());
+                                newLogin.getUsername(), newLogin.getPasswordAndIv());
   }
 
   @GetMapping("check_master_exists/{masterUsername}")

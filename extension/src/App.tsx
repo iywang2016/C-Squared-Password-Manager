@@ -1,15 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 import { findLoginFields, fillField } from './content/index';
-import { determineStrength, generatePassword } from './utils/encrypt';
+import { decryptAES256, deriveMasterKey, determineStrength, encryptAES256, generatePassword, hex2buf } from './utils/encrypt';
 import Login from './components/Login';
 import Register from './components/Register';
 import Shame from './components/Shame';
 
-export const loginState = {
-  masterUser: "",
-  domain: ""
+interface LoginState {
+  masterUser?: string,
+  masterKey?: CryptoKey
 };
+
+export const loginState : LoginState = {};
 
 export default function App() {
   const [isVisible, setIsVisible] = useState(false);
@@ -35,12 +37,15 @@ export default function App() {
   }, []);
 
   const handleAutofill = async () => {
-    if (!loginState.masterUser) {
+    if (!loginState.masterUser || !loginState.masterKey) {
       setOutput("Must log in to use autofill!");
       return;
     }
 
-    if (!loginState.domain) {
+    const domain = window.location.hostname;
+    console.log("Found domain: " + domain);
+
+    if (!domain) {
       setOutput("Could not identify site domain");
       return;
     }
@@ -50,7 +55,7 @@ export default function App() {
     const getMessage = {
       type: "GET_PASSWORDS",
       masterUser: loginState.masterUser,
-      domain: loginState.domain
+      domain: domain
     }
 
     console.log("Sending GET_PASSWORDS message");
@@ -60,15 +65,34 @@ export default function App() {
     console.log("Fetched passwords", response);
 
     if (!response.success) {
-      setOutput("Could not find applicable login information: " + response.error);
+      setOutput("Error fetching applicable login information: " + response.error);
       return;
     }
 
     const loginsMap = new Map<string, string>(Object.entries(JSON.parse(response.data)));
 
+    if (loginsMap.size === 0) {
+      setOutput("No logins saved for this site yet!");
+      return;
+    }
+
+    // TODO: display all possible logins for user to choose from; only
+    // get first one in map for now
+
+    const encryptionResult = loginsMap.values().next().value;
+    if (!encryptionResult) {
+      console.error("Could not get login password value");
+      return;
+    }
+
+    const split = encryptionResult.split("#");
+    const encryptedPass = split[0];
+    const iv = split[1];
+    const decryptedPass = await decryptAES256(loginState.masterKey, hex2buf(encryptedPass).buffer, hex2buf(iv));
+
     const credentials = {
       username: loginsMap.keys().next().value,
-      password: loginsMap.values().next().value,
+      password: decryptedPass,
     };
 
     // if (response) {
@@ -103,6 +127,18 @@ export default function App() {
 
   const handleSave = async () => {
     try {
+      if (!loginState.masterUser || !loginState.masterKey) {
+        setOutput("Must log in to save passwords!");
+        return;
+      }
+
+      const domain = window.location.hostname;
+
+      if (!domain) {
+        setOutput("Could not identify site domain");
+        return;
+      }
+
       const fields = findLoginFields();
 
       if (fields) {
@@ -127,16 +163,43 @@ export default function App() {
         } else {
           setShowShame(false);
 
+          const getSaltMessage = {
+            type: "GET_MASTER",
+            masterUser: loginState.masterUser
+          };
+
+          const getSaltResponse = await chrome.runtime.sendMessage(getSaltMessage);
+
+          if (!getSaltResponse.success) {
+            setOutput("Could not fetch account information. Error: " + getSaltResponse.error);
+            return;
+          }
+
+          if (!getSaltResponse.data || getSaltResponse.data.length == 0) {
+            // Couldn't find master user in database
+            setOutput("Could not find master username " + loginState.masterUser);
+            return;
+          }
+
+          const saltAndPass = new Map<string, string>(Object.entries(JSON.parse(getSaltResponse.data)));
+          const salt = saltAndPass.keys().next().value;
+          if (!salt) {
+            setOutput("Could not get salt for master username " + loginState.masterUser);
+            return;
+          }
+
+          const encryptionResult = await encryptAES256(loginState.masterKey, password);
+
           // TODO: encryption
           const newLogin = {
             username: username,
-            password: password
+            passwordAndIv: encryptionResult.encryptedPass + "#" + encryptionResult.iv,
           }
 
           const addMessage = {
             type: "ADD_PASSWORD",
             masterUser: loginState.masterUser,
-            domain: loginState.domain,
+            domain: domain,
             newLogin: newLogin
           };
     
@@ -145,7 +208,7 @@ export default function App() {
           const response = await chrome.runtime.sendMessage(addMessage);
     
           if (response.success) {
-            setOutput("Successfully saved username " + username + " and password " + password); 
+            setOutput("Successfully saved username and password for " + username); 
           } else {
             setOutput("Failed to save username :( error: " + response.error);
           }
@@ -157,7 +220,8 @@ export default function App() {
   }
 
   const handleLogOut = async () => {
-    loginState.masterUser = "";
+    loginState.masterUser = undefined;
+    loginState.masterKey = undefined;
   }
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { MouseEvent } from 'react';
-import { buf2hex, generateSalt, sha256 } from '../utils/encrypt';
+import { sha256, deriveMasterKey, hex2buf } from '../utils/encrypt';
 import { loginState } from '../App';
 
 // Define the expected structure for our webhook payload
@@ -37,26 +37,30 @@ export default function Login() {
 
       if (!getMasterResponse.success) {
         setStatus("Could not find account information. Error: " + getMasterResponse.error);
-        return;
-      }
-
-      if (!getMasterResponse.data || getMasterResponse.data.length == 0) {
-        // Couldn't find master user in database
-        setStatus("Could not find username " + username);
-      }
-
-      const saltAndPass = new Map<string, string>(Object.entries(JSON.parse(getMasterResponse.data)));
-      const salt = saltAndPass.keys().next().value;
-      const saltedPass = salt + masterPass;
-      const actualSaltedHashedPass = await sha256(saltedPass);
-      const expectedSaltedHashedPass = saltAndPass.values().next().value;
-
-      if (actualSaltedHashedPass === expectedSaltedHashedPass) {
-        setStatus("Successfully logged in as " + username);
-        loginState.masterUser = username;
-        await triggerWebhook('USER_LOGIN_SUCCESS', { username, timestamp: Date.now() });
       } else {
-        setStatus("Password incorrect; please try again.");
+        if (!getMasterResponse.data || getMasterResponse.data.length == 0) {
+          // Couldn't find master user in database
+          setStatus("Could not find username " + username);
+        } else {
+          const saltAndPass = new Map<string, string>(Object.entries(JSON.parse(getMasterResponse.data)));
+          const salt = saltAndPass.keys().next().value;
+          if (!salt) {
+            console.error("Could not get salt for username " + username);
+          } else {
+            const saltedPass = salt + masterPass;
+            const actualSaltedHashedPass = await sha256(saltedPass);
+            const expectedSaltedHashedPass = saltAndPass.values().next().value;
+      
+            if (actualSaltedHashedPass === expectedSaltedHashedPass) {
+              setStatus("Successfully logged in as " + username);
+              loginState.masterUser = username;
+              loginState.masterKey = await deriveMasterKey(masterPass, hex2buf(salt));
+              await triggerWebhook('USER_LOGIN_SUCCESS', { username, timestamp: Date.now() });
+            } else {
+              setStatus("Password incorrect; please try again.");
+            }
+          }
+        }
       }
 
     } catch (error: unknown) {

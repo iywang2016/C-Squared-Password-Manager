@@ -7,5 +7,5 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class NewLoginDTO {
   private final String username;
-  private final String password;
+  private final String passwordAndIv;
 }

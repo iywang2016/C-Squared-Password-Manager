@@ -1,6 +1,11 @@
 const ITERATIONS = 600000; // OWASP
 const MIN_PASSWORD_LENGTH: number = 15; // NIST
 
+type EncryptionResult = {
+  encryptedPass: string,
+  iv: string
+};
+
 /**
  *  Determine the strength of the given password by length based on NIST guidelines.
  *  All passwords must be checked with this function before stored
@@ -134,7 +139,7 @@ export function buf2hex(buffer: ArrayBuffer | Uint8Array): string {
  * Converts a Hex String back to a buffer
  * Useful for turning the salt fetched from the DB back into a usable buffer.
  */
-export function hex2buf(hexString: string): Uint8Array {
+export function hex2buf(hexString: string): Uint8Array<ArrayBuffer> {
   const match = hexString.match(/.{1,2}/g);
   return new Uint8Array(match ? match.map(byte => parseInt(byte, 16)) : []);
 }
@@ -148,7 +153,7 @@ export function generateSalt(): Uint8Array {
 }
 
 /**
- * Derives the Master Key from the password and salt.
+ * Derives the Master Key from the master password and salt.
  * This key is kept in memory to encrypt/decrypt the user's stored logins.
  *   @param password - The user's plaintext master password
  *   @param salt - The unique 16-byte salt for this user
@@ -197,17 +202,20 @@ export async function createAuthHash(masterKey: CryptoKey): Promise<string> {
  * Encrypts the plaintext using the masterKey
  * @param masterKey - the AES-256 key used to encrypt and decrypt
  * @param plaintext - string (plaintext) of the user's password to be encrypted
- * @returns promise of tuple containing encrypted plaintext (aka ciphertext) 
- *          and iv used to encrypt
+ * @returns promise of iv used to encrypt and encrypted plaintext (aka ciphertext),
+ *          both stringified
  */
-export async function encryptAES256(masterKey: CryptoKey, plaintext: string): Promise<[ArrayBuffer, Uint8Array]> {
+export async function encryptAES256(masterKey: CryptoKey, plaintext: string): Promise<EncryptionResult> {
   // generate random iv (16 bytes)
   let iv = window.crypto.getRandomValues(new Uint8Array(16));
   let encoded = new TextEncoder().encode(plaintext);
   // encrypt w 128-bit auth tag
   const encrypted = await window.crypto.subtle.encrypt(
           { name: 'AES-GCM', iv: iv, tagLength: 128}, masterKey, encoded);
-  return [encrypted, iv];
+  return {
+    encryptedPass: buf2hex(encrypted),
+    iv: buf2hex(iv)
+  };
 }
 
 /**
