@@ -1,3 +1,5 @@
+import { zxcvbn } from "@zxcvbn-ts/core";
+
 const ITERATIONS = 600000; // OWASP
 const MIN_PASSWORD_LENGTH: number = 15; // NIST
 
@@ -19,6 +21,8 @@ export function determineStrength(password: string): string[] {
     issues.push("Password is too short (minimum " + MIN_PASSWORD_LENGTH + " characters).");
   }
 
+  checkZxcvbn(password, issues);
+
   return issues;
 }
 
@@ -35,6 +39,18 @@ export function generatePassword(): string {
     password += chars.at(rands[i] % chars.length);
   }
   return password;
+}
+
+/** TODO: IF WE WANT WE CAN ADD MORE CHECKS SINCE ZXCVBN RETURNS A LOT OF INFO
+ * checks if the password is commonly guessed, or otherwise insecure
+ * @param password - plaintext string of user's password to be checked
+ * @param errors - string list of errors to add to
+ */
+function checkZxcvbn(password: string, issues: string[]): void {
+  const result = zxcvbn(password);
+  if (result.feedback.warning) {
+    issues.push(result.feedback.warning);
+  }
 }
 
 

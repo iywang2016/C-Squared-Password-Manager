@@ -181,6 +181,8 @@ export default function App() {
         const username = fields.usernameField.value;
         const password = fields.passwordField.value;
 
+        // TODO?: maybe display why the password is bad? since
+        // determineStrength returns a list of potential issues
         if (determineStrength(password).length != 0) {
           setOutput("That was very shameful :(");
           setShowShame(true);
