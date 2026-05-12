@@ -45,6 +45,11 @@ export default function App() {
       setOutput("You don't have a username and password filled in <:(");
       return;
     }
+
+    if (fields.passwordField.autocomplete.includes("current-password")) {
+      return;
+    }
+
     const username = fields.usernameField.value;
     const password = fields.passwordField.value;
 
@@ -246,6 +251,10 @@ export default function App() {
         }
         const username = fields.usernameField.value;
         const password = fields.passwordField.value;
+
+        if (fields.passwordField.autocomplete.includes("current-password")) {
+          return;
+        }
 
         // TODO?: maybe display why the password is bad? since
         // determineStrength returns a list of potential issues
