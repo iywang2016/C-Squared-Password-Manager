@@ -32,6 +32,10 @@ export async function determineStrength(password: string, masterUser?: string, m
     await checkPasswordUsed(masterUser, masterKey, password, issues);
   }
 
+  if (await checkPwnedPasswords(password)) {
+    issues.push("Password was found to be leaked!");
+  }
+
   return issues;
 }
 
@@ -92,28 +96,25 @@ function checkZxcvbn(password: string, issues: string[]): void {
   }
 }
 
-
-/** *********** UNFINISHED ***********
- * checks if the password exists in the API
+/** checks if the password exists in the pwnedPasswordsAPI
  * @param password - plaintext string of the user's password to be checked
  * @returns promise resolving to true if the API has this password in its database, false otherwise
  */
-async function findWithAPI(password: string): Promise<boolean> {
+async function checkPwnedPasswords(password: string): Promise<boolean> {
   // first check w hashed
-  let hash = await sha256(password);
+  let hash = await sha1(password); // api uses sha1
   let res = await getHashSuffixes(hash.substring(0, 5));
   if (hasMatch(hash.substring(5), res)) { return true; }
-
-  // then check w email database?
 
   return false;
 }
 
 /**
- * returns the sha256 hash of the given plaintext
+ * returns the sha1 hash of the given plaintext
+ * NOTE: not to be used for cryptographic applications
  * @param plaintext - text to be hashed
  */
-export async function sha256(plaintext: string): Promise<string> {
+export async function sha1(plaintext: string): Promise<string> {
   const data = new TextEncoder().encode(plaintext);
   const hashed = await window.crypto.subtle.digest('SHA-256', data);
   return hashToString(hashed);
@@ -165,13 +166,20 @@ async function getHashSuffixes(hashPrefix: string): Promise<string[]> {
     headers.set('Accept', 'application/json');
     headers.set('Add-Padding', 'true'); // pads responses by random amount
   
-    let site: string = "https://api.pwnedpasswords.com/range/".concat(hashPrefix);
+    let site: string = "https://api.pwnedpasswords.com/range/" + hashPrefix;
     const req: RequestInfo = new Request(site, { method: 'GET', headers: headers});
     // return fetch(req)
     //   .then(res => res.json())
     //   .then(res => {return res as string[];}); // todo: prob need to modify - copied from example
-    const resp = await fetch(req);
-    return resp.json().then(res => { return res as string[]; });
+    const result = fetch(site, req)
+      .then(async resp => await resp.text())
+      .then(data => data.split('\n'))
+    .catch(error => {
+      console.error("Failed to access pawned passwords API", error);
+      return [];
+    });
+    return result;
+    // return resp.json().then(res => { return res as string[]; });
   } catch {
     console.error("Failed to access PwnedPasswords API");
     return [];

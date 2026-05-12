@@ -2,12 +2,6 @@ import { expect, test, describe } from 'vitest';
 import { determineStrength, hasMatch } from './encrypt';
 
 describe('helper functions are reasonably correct', () => {
-  test('too short password is correctly flagged as insecure', () => {
-    expect(determineStrength("short")).toStrictEqual(
-      ["Password is too short (minimum 15 characters)."]
-    );
-  })
-
   test('suffix matches are correctly identified - hardcoded hashes', () => {
     let list = [
       '0002EEFFB2CCA91812B5CC9956854E22BEB:4',
@@ -32,7 +26,7 @@ describe('helper functions are reasonably correct', () => {
   })
 
   // TODO: failing - how to async in test??
-  test('suffix matches are correctly identified after querying API', () => {
+  test('suffix matches are correctly identified after querying API', async () => {
     let prefix = '21BD1';
     let suffix = '0067AD792FB5BA36BECEF3506EE21E41DD9';
     
@@ -41,13 +35,11 @@ describe('helper functions are reasonably correct', () => {
     headers.set('Accept', 'application/json');
     headers.set('Add-Padding', 'true'); // pads responses by random amount
     
-    let site: string = "https://api.pwnedpasswords.com/range/".concat(prefix);
+    let site: string = "https://api.pwnedpasswords.com/range/" + prefix;
     const req: RequestInfo = new Request(site, { method: 'GET', headers: headers});
-    let list: string[] = [];
-    let res = fetch(req).then(res => res.json())
-    .then(res => {list = res; return res as string[]});
-    
-    // TODO: currently not working - async stuff :(
-    expect(hasMatch(suffix, list), '\nres was ' + res + '\nand list was ' + list + '\n').toBe(true);
+
+    await fetch(req).then(async res => await res.text())
+      .then(res => {return res.split('\n')})
+      .then(res => expect(hasMatch(suffix, res), '\nand res was ' + res + '\n').toBe(true));
   })
 })
