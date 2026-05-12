@@ -19,6 +19,7 @@ export default function App() {
   const [position, setPosition] = useState({ x: 20, y: 20 });
   const [isDragging, setIsDragging] = useState(false);
   const [showShame, setShowShame] = useState(false);
+  const showShameRef = useRef(showShame);
 
   const [currentView, setCurrentView] = useState<'login' | 'register' | 'autofill' | 'save'>('login');
 
@@ -34,6 +35,41 @@ export default function App() {
 
     chrome.runtime.onMessage.addListener(handleMessage);
     return () => chrome.runtime.onMessage.removeListener(handleMessage);
+  }, []);
+
+  // logic for watching password field maybe should change bc it runs every 1s
+  useEffect(() => {
+    showShameRef.current = showShame;
+  }, [showShame]);
+  const oldUserPass = useRef({ username: '', password: '' });
+  const lastChangeTime = useRef<number>(Date.now());
+  const alreadyChecked = useRef(false)
+  useEffect(() => {
+    const checkFieldsInterval = setInterval(() => {
+      const fields = findLoginFields();
+      
+      if (fields && fields.usernameField != null) {
+        const currentUsername = fields.usernameField.value;
+        const currentPassword = fields.passwordField.value;
+
+        if (currentUsername !== oldUserPass.current.username ||
+            currentPassword !== oldUserPass.current.password) {
+          oldUserPass.current = { username: currentUsername, 
+                                  password: currentPassword }; 
+          lastChangeTime.current = Date.now();
+          alreadyChecked.current = false;
+        } else {
+          const lastChanged = Date.now() - lastChangeTime.current;
+          if (lastChanged > 2000 
+            && !showShameRef.current 
+            && oldUserPass.current.password !== ''
+            && oldUserPass.current.username !== ''
+            ) {
+            handleSave();
+          }
+        }
+      }
+    }, 1000);
   }, []);
 
   const handleAutofill = async () => {
@@ -302,7 +338,6 @@ export default function App() {
         >
           ✕
         </button>
-
         <button
           onClick={() => handleLogOut()}
           style={{
@@ -320,62 +355,65 @@ export default function App() {
         >
           Log Out
         </button>
+        <div>
+          {!showShame ? (<div>
+          <h2>C_Squared PM</h2>
+          <p className="status-text">{output}</p>
 
-        <h2>C_Squared PM</h2>
-        <p className="status-text">{output}</p>
-
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '15px' }}>
-          <button
-            onClick={() => setCurrentView('login')}
-            style={{ fontWeight: currentView === 'login' ? 'bold' : 'normal' }}
-          >
-            Login
-          </button>
-          <button
-            onClick={() => setCurrentView('register')}
-            style={{ fontWeight: currentView === 'register' ? 'bold' : 'normal' }}
-          >
-            Register
-          </button>
-          <button
-            onClick={() => setCurrentView('autofill')}
-            style={{ fontWeight: currentView === 'autofill' ? 'bold' : 'normal' }}
-          >
-            Autofill
-          </button>
-          <button
-            onClick={() => setCurrentView('save')}
-            style={{ fontWeight: currentView === 'save' ? 'bold' : 'normal' }}
-          >
-            Save Password
-          </button>
-        </div>
-
-        {currentView === 'login' && <Login />}
-        {currentView === 'register' && <Register />}
-        {currentView === 'autofill' && (
-          <button
-            className="autofill-button"
-            onClick={handleAutofill}
-            style={{ width: '100%', padding: '10px' }}
-          >
-            Autofill Current Site
-          </button>
-        )}
-        {currentView === 'save' && (
-          <div className="register-component">
-            {!showShame ? (<button
-                className="save-button"
-                onClick={handleSave}
-                style={{ width: '100%', padding: '10px' }}
-              >
-                Save Password On Current Site
-              </button>
-            ) : (
-              <Shame setShame={setShowShame}/>
-            )}
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '15px' }}>
+            <button
+              onClick={() => setCurrentView('login')}
+              style={{ fontWeight: currentView === 'login' ? 'bold' : 'normal' }}
+            >
+              Login
+            </button>
+            <button
+              onClick={() => setCurrentView('register')}
+              style={{ fontWeight: currentView === 'register' ? 'bold' : 'normal' }}
+            >
+              Register
+            </button>
+            <button
+              onClick={() => setCurrentView('autofill')}
+              style={{ fontWeight: currentView === 'autofill' ? 'bold' : 'normal' }}
+            >
+              Autofill
+            </button>
+            <button
+              onClick={() => setCurrentView('save')}
+              style={{ fontWeight: currentView === 'save' ? 'bold' : 'normal' }}
+            >
+              Save Password
+            </button>
           </div>
-        )}
+
+          {currentView === 'login' && <Login />}
+          {currentView === 'register' && <Register />}
+          {currentView === 'autofill' && (
+            <button
+              className="autofill-button"
+              onClick={handleAutofill}
+              style={{ width: '100%', padding: '10px' }}
+            >
+              Autofill Current Site
+            </button>
+          )}
+          {currentView === 'save' && (
+            <div className="register-component">
+              {!showShame ? (<button
+                  className="save-button"
+                  onClick={handleSave}
+                  style={{ width: '100%', padding: '10px' }}
+                >
+                  Save Password On Current Site
+                </button>
+              ) : (
+                <Shame setShame={setShowShame}/>
+              )}
+            </div>
+          )}
+          </div>) : (<Shame setShame={setShowShame}/>)}
+        </div>
       </div>
     </div>
   );
