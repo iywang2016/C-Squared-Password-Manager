@@ -66,7 +66,8 @@ export default function App() {
             && !showShameRef.current 
             && oldUserPass.current.password !== ''
             && oldUserPass.current.username !== ''
-            ) {
+            && !alreadyChecked.current) {
+            alreadyChecked.current = true;
             handleSave();
           }
         }
@@ -358,9 +359,9 @@ export default function App() {
           Log Out
         </button>
         <div>
-          {!showShame ? (<div>
           <h2>C_Squared PM</h2>
           <p className="status-text">{output}</p>
+          {!showShame ? (<div>
 
           <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '15px' }}>
             <button
