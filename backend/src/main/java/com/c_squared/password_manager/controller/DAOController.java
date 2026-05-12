@@ -21,6 +21,8 @@ import org.springframework.security.config.annotation.web.configurers.AbstractHt
 import org.springframework.context.annotation.Bean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 @RestController
 @RequestMapping("/database")
@@ -51,8 +53,8 @@ public class DAOController {
     return userDomainsDao.getUserDomains(masterUsername);
   }
 
-  @PutMapping("add_domain/{masterUsername}")
-  public void addUserDomain(@PathVariable String masterUsername, @RequestBody String domain) {
+  @PutMapping("add_domain/{masterUsername}/{domain}")
+  public void addUserDomain(@PathVariable String masterUsername, @PathVariable String domain) {
     userDomainsDao.addUserDomain(masterUsername, domain);
   }
 

@@ -59,12 +59,11 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       sendResponse({ success: false, error: error.message });
     });
 
-    const domainUrl = `http://localhost:8080/database/add_domain/${message.masterUser}`;
+    const domainUrl = `http://localhost:8080/database/add_domain/${message.masterUser}/${message.domain}`;
 
     fetch(domainUrl, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(message.domain)
+      headers: { 'Content-Type': 'application/json' }
     })
     .then(response => response.text())
     .then(data => {
