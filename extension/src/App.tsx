@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, type RefObject } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 import { findLoginFields, fillField } from './content/index';
 import { determineStrength, generatePassword } from './utils/encrypt';
