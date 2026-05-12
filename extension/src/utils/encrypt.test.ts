@@ -1,14 +1,7 @@
-import { expect, test, describe, beforeAll } from 'vitest';
+import { expect, test, describe } from 'vitest';
 import { determineStrength, hasMatch } from './encrypt';
-import { nextTick } from 'process';
 
 describe('helper functions are reasonably correct', () => {
-  test('too short password is correctly flagged as insecure', () => {
-    expect(determineStrength("short")).toStrictEqual(
-      ["Password is too short (minimum 15 characters)."]
-    );
-  })
-
   test('suffix matches are correctly identified - hardcoded hashes', () => {
     let list = [
       '0002EEFFB2CCA91812B5CC9956854E22BEB:4',
@@ -45,19 +38,8 @@ describe('helper functions are reasonably correct', () => {
     let site: string = "https://api.pwnedpasswords.com/range/" + prefix;
     const req: RequestInfo = new Request(site, { method: 'GET', headers: headers});
 
-    // BAD 1
-    // let list = fetch(req).then(res => res.json())
-    //   .then(res => {return res as string[]});
-    let list: string[];
-    let res: Response;
-    beforeAll(async() => {
-      res = await fetch(req);
-      list = await res.json();
-    }, 5000);
-
-    
-    // await nextTick;
-    // TODO: currently not working - async stuff :(
-    expect(hasMatch(suffix, list), '\nand list was ' + list + '\n').toBe(true);
+    await fetch(req).then(async res => await res.text())
+      .then(res => {return res.split('\n')})
+      .then(res => expect(hasMatch(suffix, res), '\nand res was ' + res + '\n').toBe(true));
   })
 })

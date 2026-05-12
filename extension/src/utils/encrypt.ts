@@ -1,30 +1,79 @@
+import { zxcvbn } from "@zxcvbn-ts/core";
+import { getPasswords } from "../App";
+
 const ITERATIONS = 600000; // OWASP
 const MIN_PASSWORD_LENGTH: number = 15; // NIST
 
-/** * Determine the strength of the given password by length based on NIST guidelines.
+type EncryptionResult = {
+  encryptedPass: string,
+  iv: string
+};
+
+/**
+ *  Determine the strength of the given password by length based on NIST guidelines,
+ *  as well as whether the master user has used this password before (if masterUser
+ *  and masterKey are provided).
  *  All passwords must be checked with this function before stored
+ *  @param masterUser - master username currently logged in
+ *  @param masterKey - crypto key of the master user
  *  @param password - password to check
  *  @return string[] - list of issues with the given password. Empty means valid.
  */
-export function determineStrength(password: string): string[] {
+export async function determineStrength(password: string, masterUser?: string, masterKey?: CryptoKey): Promise<string[]> {
   const issues: string[] = [];
 
   if (password.length < MIN_PASSWORD_LENGTH) {
     issues.push("Password is too short (minimum " + MIN_PASSWORD_LENGTH + " characters).");
   }
 
-  if (issues.length === 0) {
-    issues.push("No issues found.");
+  checkZxcvbn(password, issues);
+  
+  if (masterUser && masterKey) {
+    await checkPasswordUsed(masterUser, masterKey, password, issues);
+  }
+
+  if (await checkPwnedPasswords(password)) {
+    issues.push("Password was found to be leaked!");
   }
 
   return issues;
 }
 
+async function checkPasswordUsed(masterUser: string, masterKey: CryptoKey, password: string, issues: string[]): Promise<void> {
+  const getDomainsMessage = {
+    type: "GET_DOMAINS",
+    masterUser: masterUser
+  };
+
+  const getDomainsResponse = await chrome.runtime.sendMessage(getDomainsMessage);
+  if (!getDomainsResponse.success) {
+    console.error("Could not fetch domains for account. Error: " + getDomainsResponse.error);
+    return;
+  }
+
+  const domainSet = new Set<string>(JSON.parse(getDomainsResponse.data));
+  for (const domain of domainSet) {
+    const passwordsMap = await getPasswords(domain);
+    if (!passwordsMap || passwordsMap.size === 0) continue;
+    for (const passwordAndIv of passwordsMap.values()) {
+      const iv = hex2buf(passwordAndIv.split("#")[1]);
+
+      const encryptedPass = await encryptAES256WithIV(masterKey, password, iv);
+      console.log("Found " + passwordAndIv);
+      console.log("Made " + encryptedPass + " and " + iv);
+      if ((encryptedPass + "#" + buf2hex(iv)) === passwordAndIv) {
+        issues.push("You have already used this password before! Choose a different one.");
+        return;
+      }
+    }
+  }
+}
+
 /**
- * generates and returns a secure master password with length equal to MIN_PASSWORD_LENGTH
+ * generates and returns a secure password with length equal to MIN_PASSWORD_LENGTH
  * @returns master password
  */
-export function generateMasterPassword(): string {
+export function generatePassword(): string {
   let chars = 
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-_=+[]{}<>?";
   let rands = window.crypto.getRandomValues(new Uint8Array(MIN_PASSWORD_LENGTH));
@@ -35,28 +84,38 @@ export function generateMasterPassword(): string {
   return password;
 }
 
+/** TODO: IF WE WANT WE CAN ADD MORE CHECKS SINCE ZXCVBN RETURNS A LOT OF INFO
+ * checks if the password is commonly guessed, or otherwise insecure
+ * @param password - plaintext string of user's password to be checked
+ * @param errors - string list of errors to add to
+ */
+function checkZxcvbn(password: string, issues: string[]): void {
+  const result = zxcvbn(password);
+  if (result.feedback.warning) {
+    issues.push(result.feedback.warning);
+  }
+}
 
-/** *********** UNFINISHED ***********
- * checks if the password exists in the API
+
+/** checks if the password exists in the pwnedPasswordsAPI
  * @param password - plaintext string of the user's password to be checked
  * @returns promise resolving to true if the API has this password in its database, false otherwise
  */
-async function findWithAPI(password: string): Promise<boolean> {
+async function checkPwnedPasswords(password: string): Promise<boolean> {
   // first check w hashed
-  let hash = await sha1(password);
+  let hash = await sha1(password); // api uses sha1
   let res = await getHashSuffixes(hash.substring(0, 5));
   if (hasMatch(hash.substring(5), res)) { return true; }
-
-  // then check w email database?
 
   return false;
 }
 
 /**
  * returns the sha1 hash of the given plaintext
+ * NOTE: not to be used for cryptographic applications
  * @param plaintext - text to be hashed
  */
-async function sha1(plaintext: string): Promise<string> {
+export async function sha1(plaintext: string): Promise<string> {
   const data = new TextEncoder().encode(plaintext);
   const hashed = await window.crypto.subtle.digest('SHA-1', data);
   return hashToString(hashed);
@@ -108,13 +167,20 @@ async function getHashSuffixes(hashPrefix: string): Promise<string[]> {
     headers.set('Accept', 'application/json');
     headers.set('Add-Padding', 'true'); // pads responses by random amount
   
-    let site: string = "https://api.pwnedpasswords.com/range/".concat(hashPrefix);
+    let site: string = "https://api.pwnedpasswords.com/range/" + hashPrefix;
     const req: RequestInfo = new Request(site, { method: 'GET', headers: headers});
     // return fetch(req)
     //   .then(res => res.json())
     //   .then(res => {return res as string[];}); // todo: prob need to modify - copied from example
-    const resp = await fetch(req);
-    return resp.json().then(res => { return res as string[]; });
+    const result = fetch(site, req)
+      .then(async resp => await resp.text())
+      .then(data => data.split('\n'))
+    .catch(error => {
+      console.error("Failed to access pawned passwords API", error);
+      return [];
+    });
+    return result;
+    // return resp.json().then(res => { return res as string[]; });
   } catch {
     console.error("Failed to access PwnedPasswords API");
     return [];
@@ -137,7 +203,7 @@ export function buf2hex(buffer: ArrayBuffer | Uint8Array): string {
  * Converts a Hex String back to a buffer
  * Useful for turning the salt fetched from the DB back into a usable buffer.
  */
-export function hex2buf(hexString: string): Uint8Array {
+export function hex2buf(hexString: string): Uint8Array<ArrayBuffer> {
   const match = hexString.match(/.{1,2}/g);
   return new Uint8Array(match ? match.map(byte => parseInt(byte, 16)) : []);
 }
@@ -151,7 +217,7 @@ export function generateSalt(): Uint8Array {
 }
 
 /**
- * Derives the Master Key from the password and salt.
+ * Derives the Master Key from the master password and salt.
  * This key is kept in memory to encrypt/decrypt the user's stored logins.
  *   @param password - The user's plaintext master password
  *   @param salt - The unique 16-byte salt for this user
@@ -200,17 +266,35 @@ export async function createAuthHash(masterKey: CryptoKey): Promise<string> {
  * Encrypts the plaintext using the masterKey
  * @param masterKey - the AES-256 key used to encrypt and decrypt
  * @param plaintext - string (plaintext) of the user's password to be encrypted
- * @returns promise of tuple containing encrypted plaintext (aka ciphertext) 
- *          and iv used to encrypt
+ * @returns promise of iv used to encrypt and encrypted plaintext (aka ciphertext),
+ *          both stringified
  */
-export async function encryptAES256(masterKey: CryptoKey, plaintext: string): Promise<[ArrayBuffer, Uint8Array]> {
+export async function encryptAES256(masterKey: CryptoKey, plaintext: string): Promise<EncryptionResult> {
   // generate random iv (16 bytes)
   let iv = window.crypto.getRandomValues(new Uint8Array(16));
   let encoded = new TextEncoder().encode(plaintext);
   // encrypt w 128-bit auth tag
   const encrypted = await window.crypto.subtle.encrypt(
           { name: 'AES-GCM', iv: iv, tagLength: 128}, masterKey, encoded);
-  return [encrypted, iv];
+  return {
+    encryptedPass: buf2hex(encrypted),
+    iv: buf2hex(iv)
+  };
+}
+
+/**
+ * Encrypts the plaintext using the masterKey and IV.
+ * @param masterKey - the AES-256 key used to encrypt and decrypt
+ * @param plaintext - string (plaintext) of the user's password to be encrypted
+ * @param iv - initialization vector to be used to encrypt this plaintext
+ * @returns promise of encrypted plaintext
+ */
+export async function encryptAES256WithIV(masterKey: CryptoKey, plaintext: string, iv: Uint8Array<ArrayBuffer>): Promise<string> {
+  let encoded = new TextEncoder().encode(plaintext);
+  // encrypt w 128-bit auth tag
+  const encrypted = await window.crypto.subtle.encrypt(
+          { name: 'AES-GCM', iv: iv, tagLength: 128}, masterKey, encoded);
+  return buf2hex(encrypted);
 }
 
 /**
