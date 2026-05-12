@@ -71,9 +71,47 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       sendResponse({ success: true, data: data });
     })
     .catch(error => {
-      console.error("Could not add password", error);
+      console.error("Could not get password", error);
       sendResponse({ success: false, error: error.message });
     });
+    return true;
+  }
+
+  else if (message.type === "ADD_MASTER") {
+    console.log("ADD_MASTER message received");
+    const url = `http://localhost:8080/database/add_master/${message.masterUser}`;
+
+    fetch(url, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(message.newMaster)
+    })
+    .then(response => response.text())
+    .then(data => {
+      sendResponse({ success: true, data: data });
+    })
+    .catch(error => {
+      console.error("Could not register master user", error);
+      sendResponse({ success: false, error: error.message });
+    });
+
+    return true;
+  }
+
+  else if (message.type === "GET_MASTER") {
+    console.log("GET_MASTER message received");
+    const url = `http://localhost:8080/database/get_master/${message.masterUser}`;
+
+    fetch(url)
+    .then(response => response.text())
+    .then(data => {
+      sendResponse({ success: true, data: data });
+    })
+    .catch(error => {
+      console.error("Could not get master user", error);
+      sendResponse({ success: false, error: error.message });
+    });
+    
     return true;
   }
 

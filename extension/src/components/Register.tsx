@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import type { MouseEvent } from 'react';
-import { generateSalt, deriveMasterKey, createAuthHash, buf2hex } from '../utils/encrypt';
+import { generateSalt, deriveMasterKey, createAuthHash, buf2hex, sha256 } from '../utils/encrypt';
 import { determineStrength } from '../utils/encrypt';
 import Shame from '../components/Shame';
 
@@ -25,36 +25,43 @@ export default function Register() {
 
   const handleRegister = async (e: MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
-    setStatus("Generating something");
+    setStatus("Registering...");
 
     try {
       // Before encrypting and allowing password, check strength and shame first
       if (determineStrength(masterPass).length != 0) {
         setStatus("That was very shameful :(");
-        setShowShame(true)
+        setShowShame(true);
       } else {
+        if (!username) {
+          setStatus("Master username must be at least 1 character");
+          return;
+        }
         setShowShame(false);
         
-        const salt = generateSalt();
-        const masterKey = await deriveMasterKey(masterPass, salt);
-        const authHash = await createAuthHash(masterKey);
-        
-        // Dummy route must implement later
-        const registerResponse = await fetch(`http://localhost:8080/api/register`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            username,
-            saltHex: buf2hex(salt),
-            authHash
-          })
-        });
+        const salt = buf2hex(generateSalt());
+        const saltedPass = salt + masterPass;
+        const saltedHashedPass = await sha256(saltedPass);
 
-        if (registerResponse.ok) {
+        const newMaster = {
+          pass: saltedHashedPass,
+          salt: salt,
+          auth: "TESTING_AUTH"
+        };
+
+        const registerMessage = {
+          type: "ADD_MASTER",
+          masterUser: username,
+          newMaster: newMaster
+        };
+
+        const registerResponse = await chrome.runtime.sendMessage(registerMessage);
+
+        if (registerResponse.success) {
           setStatus("Registration successful!");
           await triggerWebhook('Registered User', { username, timestamp: Date.now() });
         } else {
-          setStatus("Registration failed");
+          setStatus("Registration failed. Error: " + registerResponse.error);
         }
       }
     } catch (error: unknown) {

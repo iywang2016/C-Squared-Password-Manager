@@ -40,7 +40,7 @@ export function generatePassword(): string {
  */
 async function findWithAPI(password: string): Promise<boolean> {
   // first check w hashed
-  let hash = await sha1(password);
+  let hash = await sha256(password);
   let res = await getHashSuffixes(hash.substring(0, 5));
   if (hasMatch(hash.substring(5), res)) { return true; }
 
@@ -50,12 +50,12 @@ async function findWithAPI(password: string): Promise<boolean> {
 }
 
 /**
- * returns the sha1 hash of the given plaintext
+ * returns the sha256 hash of the given plaintext
  * @param plaintext - text to be hashed
  */
-async function sha1(plaintext: string): Promise<string> {
+export async function sha256(plaintext: string): Promise<string> {
   const data = new TextEncoder().encode(plaintext);
-  const hashed = await window.crypto.subtle.digest('SHA-1', data);
+  const hashed = await window.crypto.subtle.digest('SHA-256', data);
   return hashToString(hashed);
 }
 

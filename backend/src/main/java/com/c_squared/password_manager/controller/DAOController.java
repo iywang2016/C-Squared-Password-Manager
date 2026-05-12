@@ -19,10 +19,14 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.context.annotation.Bean;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @RestController
 @RequestMapping("/database")
 public class DAOController {
+  private static final Logger logger = LoggerFactory.getLogger(DAOController.class);
+
   private final UserDomainsDAO userDomainsDao;
   private final PasswordsDAO passwordsDao;
   private final MasterCredentialDAO masterCredentialDao;
@@ -85,6 +89,7 @@ public class DAOController {
   @PutMapping("add_master/{masterUsername}")
   public void addMasterCredentials(@PathVariable String masterUsername,
                                    @RequestBody MasterCredentialDTO newMaster) {
+    logger.info("Username " + masterUsername + " with " + newMaster.getPass());
     masterCredentialDao.addMasterCredentials(masterUsername,
                                              newMaster.getPass(),
                                              newMaster.getSalt(),

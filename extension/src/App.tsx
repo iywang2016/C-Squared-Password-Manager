@@ -6,6 +6,11 @@ import Login from './components/Login';
 import Register from './components/Register';
 import Shame from './components/Shame';
 
+export const loginState = {
+  masterUser: "",
+  domain: ""
+};
+
 export default function App() {
   const [isVisible, setIsVisible] = useState(false);
   const [output, setOutput] = useState("Welcome Back");
@@ -17,9 +22,6 @@ export default function App() {
 
   const offset = useRef({ x: 0, y: 0 });
   const popupRef = useRef<HTMLDivElement>(null);
-
-  const masterUser = "TestingMasterUsername";
-  const testingDomain = "TestingDomain";
 
   useEffect(() => {
     const handleMessage = (message: any) => {
@@ -33,12 +35,22 @@ export default function App() {
   }, []);
 
   const handleAutofill = async () => {
+    if (!loginState.masterUser) {
+      setOutput("Must log in to use autofill!");
+      return;
+    }
+
+    if (!loginState.domain) {
+      setOutput("Could not identify site domain");
+      return;
+    }
+
     console.log("Starting autofill");
 
     const getMessage = {
       type: "GET_PASSWORDS",
-      masterUser: masterUser,
-      domain: testingDomain
+      masterUser: loginState.masterUser,
+      domain: loginState.domain
     }
 
     console.log("Sending GET_PASSWORDS message");
@@ -123,8 +135,8 @@ export default function App() {
 
           const addMessage = {
             type: "ADD_PASSWORD",
-            masterUser: masterUser,
-            domain: testingDomain,
+            masterUser: loginState.masterUser,
+            domain: loginState.domain,
             newLogin: newLogin
           };
     
