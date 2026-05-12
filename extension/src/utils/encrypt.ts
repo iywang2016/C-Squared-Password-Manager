@@ -1,4 +1,5 @@
 import { zxcvbn } from "@zxcvbn-ts/core";
+import { getPasswords } from "../App";
 
 const ITERATIONS = 600000; // OWASP
 const MIN_PASSWORD_LENGTH: number = 15; // NIST
@@ -9,12 +10,16 @@ type EncryptionResult = {
 };
 
 /**
- *  Determine the strength of the given password by length based on NIST guidelines.
+ *  Determine the strength of the given password by length based on NIST guidelines,
+ *  as well as whether the master user has used this password before (if masterUser
+ *  and masterKey are provided).
  *  All passwords must be checked with this function before stored
+ *  @param masterUser - master username currently logged in
+ *  @param masterKey - crypto key of the master user
  *  @param password - password to check
  *  @return string[] - list of issues with the given password. Empty means valid.
  */
-export function determineStrength(password: string): string[] {
+export async function determineStrength(password: string, masterUser?: string, masterKey?: CryptoKey): Promise<string[]> {
   const issues: string[] = [];
 
   if (password.length < MIN_PASSWORD_LENGTH) {
@@ -22,8 +27,42 @@ export function determineStrength(password: string): string[] {
   }
 
   checkZxcvbn(password, issues);
+  
+  if (masterUser && masterKey) {
+    await checkPasswordUsed(masterUser, masterKey, password, issues);
+  }
 
   return issues;
+}
+
+async function checkPasswordUsed(masterUser: string, masterKey: CryptoKey, password: string, issues: string[]): Promise<void> {
+  const getDomainsMessage = {
+    type: "GET_DOMAINS",
+    masterUser: masterUser
+  };
+
+  const getDomainsResponse = await chrome.runtime.sendMessage(getDomainsMessage);
+  if (!getDomainsResponse.success) {
+    console.error("Could not fetch domains for account. Error: " + getDomainsResponse.error);
+    return;
+  }
+
+  const domainSet = new Set<string>(JSON.parse(getDomainsResponse.data));
+  for (const domain of domainSet) {
+    const passwordsMap = await getPasswords(domain);
+    if (!passwordsMap || passwordsMap.size === 0) continue;
+    for (const passwordAndIv of passwordsMap.values()) {
+      const iv = hex2buf(passwordAndIv.split("#")[1]);
+
+      const encryptedPass = await encryptAES256WithIV(masterKey, password, iv);
+      console.log("Found " + passwordAndIv);
+      console.log("Made " + encryptedPass + " and " + iv);
+      if ((encryptedPass + "#" + buf2hex(iv)) === passwordAndIv) {
+        issues.push("You have already used this password before! Choose a different one.");
+        return;
+      }
+    }
+  }
 }
 
 /**

@@ -30,7 +30,9 @@ export default function Register() {
 
     try {
       // Before encrypting and allowing password, check strength and shame first
-      if (determineStrength(masterPass).length != 0) {
+      const issues = await determineStrength(masterPass);
+      
+      if (issues.length != 0) {
         setStatus("That was very shameful :(");
         setShowShame(true);
       } else {
