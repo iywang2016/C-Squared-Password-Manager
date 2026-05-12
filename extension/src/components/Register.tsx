@@ -3,6 +3,7 @@ import type { MouseEvent } from 'react';
 import { generateSalt, deriveMasterKey, createAuthHash, buf2hex, sha256 } from '../utils/encrypt';
 import { determineStrength } from '../utils/encrypt';
 import Shame from '../components/Shame';
+import { loginState } from '../App';
 
 // Could move this out to a separate file, it's also used in login.tsx being lazy though
 // @cady do you want to do this?
@@ -33,34 +34,47 @@ export default function Register() {
         setStatus("That was very shameful :(");
         setShowShame(true);
       } else {
+        setShowShame(false);
         if (!username) {
           setStatus("Master username must be at least 1 character");
         } else {
-          setShowShame(false);
+          // Check if master username exists
+          const checkMessage = {
+            type: "CHECK_MASTER_EXISTS",
+            masterUser: username
+          };
+
+          console.log("Sending CHECK_MASTER_EXISTS message");
+          const response = await chrome.runtime.sendMessage(checkMessage);
           
-          const salt = buf2hex(generateSalt());
-          const saltedPass = salt + masterPass;
-          const saltedHashedPass = await sha256(saltedPass);
-  
-          const newMaster = {
-            pass: saltedHashedPass,
-            salt: salt,
-            auth: "TESTING_AUTH"
-          };
-  
-          const registerMessage = {
-            type: "ADD_MASTER",
-            masterUser: username,
-            newMaster: newMaster
-          };
-  
-          const registerResponse = await chrome.runtime.sendMessage(registerMessage);
-  
-          if (registerResponse.success) {
-            setStatus("Registration successful!");
-            await triggerWebhook('Registered User', { username, timestamp: Date.now() });
+          if (!response.success || response.data === "true") {
+            setStatus("There is already a user with the username '" + username + "', " +
+                      "please choose a different one!");
           } else {
-            setStatus("Registration failed. Error: " + registerResponse.error);
+            const salt = buf2hex(generateSalt());
+            const saltedPass = salt + masterPass;
+            const saltedHashedPass = await sha256(saltedPass);
+    
+            const newMaster = {
+              pass: saltedHashedPass,
+              salt: salt,
+              auth: "TESTING_AUTH"
+            };
+    
+            const registerMessage = {
+              type: "ADD_MASTER",
+              masterUser: username,
+              newMaster: newMaster
+            };
+    
+            const registerResponse = await chrome.runtime.sendMessage(registerMessage);
+    
+            if (registerResponse.success) {
+              setStatus("Registration successful!");
+              await triggerWebhook('Registered User', { username, timestamp: Date.now() });
+            } else {
+              setStatus("Registration failed. Error: " + registerResponse.error);
+            }
           }
         }
       }

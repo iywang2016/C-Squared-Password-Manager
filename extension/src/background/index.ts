@@ -115,6 +115,23 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true;
   }
 
+  else if (message.type === "CHECK_MASTER_EXISTS") {
+    console.log("CHECK_MASTER_EXISTS message received");
+    const url = `http://localhost:8080/database/check_master_exists/${message.masterUser}`;
+
+    fetch(url)
+    .then(response => response.text())
+    .then(data => {
+      sendResponse({ success: true, data: data });
+    })
+    .catch(error => {
+      console.error("Could not check for master user", error);
+      sendResponse({ success: false, error: error.message });
+    });
+    
+    return true;
+  }
+
   return true;
 });
 

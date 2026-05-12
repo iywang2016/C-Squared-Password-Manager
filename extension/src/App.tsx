@@ -26,6 +26,10 @@ export default function App() {
   const offset = useRef({ x: 0, y: 0 });
   const popupRef = useRef<HTMLDivElement>(null);
 
+  const oldUserPass = useRef({ username: '', password: '' });
+  const lastChangeTime = useRef<number>(Date.now());
+  const alreadyChecked = useRef(false);
+
   useEffect(() => {
     const handleMessage = (message: any) => {
       if (message.type === "TOGGLE_UI") {
@@ -41,9 +45,7 @@ export default function App() {
   useEffect(() => {
     showShameRef.current = showShame;
   }, [showShame]);
-  const oldUserPass = useRef({ username: '', password: '' });
-  const lastChangeTime = useRef<number>(Date.now());
-  const alreadyChecked = useRef(false)
+  
   useEffect(() => {
     const checkFieldsInterval = setInterval(() => {
       const fields = findLoginFields();
