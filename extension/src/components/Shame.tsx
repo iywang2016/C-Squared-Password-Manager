@@ -1,34 +1,38 @@
 import { useState, useEffect } from 'react';
+import * as Constants from '../utils/constants';
 
 
 export default function Shame(props:any) {
   const [feedbackText, setFeedbackText] = useState('');
+  const issueList: string[] = [];
   let shameNumber = Math.floor(Math.random() * 2);
   if (shameNumber != 1) {
     shameNumber = 1;
   }
-  let size = 12;
 
-  // useEffect(() => {
-  // const interval = setInterval(() => {
-  //   size = size + size;
-  // }, 2000);
-
-  // return () => clearInterval(interval);
-  // }, []);
-  
   useEffect(() => {
-    if (feedbackText === "I understand my password was weak, I promise to do better next time.") {
+    console.log(issueList.join(""));
+    if (feedbackText === issueList.join("")) {
       props.setShame(false);
     }
   }, [feedbackText]);
 
+  for (let i = 0 ; i < props.issues.length; i++) {
+    if (i > 0) {
+      issueList.push(" ");
+    }
+    if (props.issues[i] === Constants.ISSUE_SHORT_PASS_PHRASE) {
+      issueList.push("I understand my password was too short. I will use a length of at least " + Constants.MIN_PASSWORD_LENGTH + " characters.");
+    } else if (props.issues[i] === Constants.ISSUE_SEQUENCE_PHRASE) {
+      issueList.push("I understand I should not use a sequence of numbers in my password.")
+    }
+  }
+
   if (shameNumber == 1) {
     return (
       <div className="shame-text-input">
-          <p style={{ color: 'red', fontSize: size }}>Please acknowledge your password was weak.
-                        The password should be at least of length 15 characters.
-                        Type "I understand my password was weak, I promise to do better next time."
+          <p style={{ color: 'red', fontSize: '12px' }}>Please acknowledge your password was weak.
+                        Type "{issueList.join("")}"
                         to proceed.</p>
           <textarea
             style={{ width: '100%', height: '60px', fontSize: '12px' }}

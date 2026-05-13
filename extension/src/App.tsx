@@ -20,6 +20,7 @@ export default function App() {
   const [isDragging, setIsDragging] = useState(false);
   const [showShame, setShowShame] = useState(false);
   const showShameRef = useRef(showShame);
+  const [issues, setIssues] = useState<string[]>([]);
 
   const [currentView, setCurrentView] = useState<'login' | 'register' | 'autofill'>('login');
 
@@ -258,10 +259,12 @@ export default function App() {
 
         // TODO?: maybe display why the password is bad? since
         // determineStrength returns a list of potential issues
-        const issues = await determineStrength(password, loginState.masterUser, loginState.masterKey);
-        if (issues.length != 0) {
+        
+        const issue = await determineStrength(password, loginState.masterUser, loginState.masterKey);
+        if (issue.length != 0) {
           setOutput("That was very shameful :(");
           setShowShame(true);
+          setIssues(issue);
           // Set password input field to CSPRN
           const betterPassword = generatePassword();
           fillField(fields.passwordField, betterPassword);
@@ -411,7 +414,7 @@ export default function App() {
               Autofill Current Site
             </button>
           )}
-          </div>) : (<Shame setShame={setShowShame}/>)}
+          </div>) : (<Shame setShame={setShowShame} issues={issues}/>)}
         </div>
       </div>
     </div>

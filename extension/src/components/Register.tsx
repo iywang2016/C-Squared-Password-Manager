@@ -19,6 +19,7 @@ export default function Register() {
   const [masterPass, setMasterPass] = useState('');
   const [status, setStatus] = useState('');
   const [showShame, setShowShame] = useState(false);
+  const [issues, setIssues] = useState<string[]>([]);
   
   const triggerWebhook = async (eventType: string, payload: WebhookPayload) => {
     console.log(`This ${eventType} finished and with payload:`, payload);
@@ -30,11 +31,11 @@ export default function Register() {
 
     try {
       // Before encrypting and allowing password, check strength and shame first
-      const issues = await determineStrength(masterPass);
-      
-      if (issues.length != 0) {
+      const issue = await determineStrength(masterPass);
+      if (issue.length != 0) {
         setStatus("That was very shameful :(");
         setShowShame(true);
+        setIssues(issue);
       } else {
         setShowShame(false);
         if (!username) {
@@ -116,7 +117,7 @@ export default function Register() {
         </form>
       </div>
       ) : (
-        <Shame setShame={setShowShame}/>
+        <Shame setShame={setShowShame} issues={issues}/>
       )}
       {status && <p className="status-text">{status}</p>}
     </div>
