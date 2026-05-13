@@ -116,6 +116,16 @@ async function checkPwnedPasswords(password: string): Promise<boolean> {
  */
 export async function sha1(plaintext: string): Promise<string> {
   const data = new TextEncoder().encode(plaintext);
+  const hashed = await window.crypto.subtle.digest('SHA-1', data);
+  return hashToString(hashed);
+}
+
+/**
+ * returns the sha256 hash of the given plaintext
+ * @param plaintext - text to be hashed
+ */
+export async function sha256(plaintext: string): Promise<string> {
+  const data = new TextEncoder().encode(plaintext);
   const hashed = await window.crypto.subtle.digest('SHA-256', data);
   return hashToString(hashed);
 }
