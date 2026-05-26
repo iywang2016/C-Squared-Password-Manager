@@ -9,11 +9,6 @@ export default defineConfig({
     crx({ manifest }),
   ],
   build: {
-    outDir: 'dist',
-    rollupOptions: {
-      input: {
-        content: 'src/content/index.tsx'
-      }
-    }
+    outDir: 'dist'
   }
 });

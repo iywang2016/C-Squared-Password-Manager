@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import * as Constants from '../utils/constants';
-
+import * as Constants from '../../utils/constants';
+import './Shame.css';
 
 export default function Shame(props:any) {
   const [feedbackText, setFeedbackText] = useState('');
@@ -31,11 +31,12 @@ export default function Shame(props:any) {
   if (shameNumber == 1) {
     return (
       <div className="shame-text-input">
-          <p style={{ color: 'red', fontSize: '12px' }}>Please acknowledge your password was weak.
-                        Type "{issueList.join("")}"
-                        to proceed.</p>
+          <p className="shame-warning">
+            Please acknowledge your password was weak.
+            Type "{issueList.join("")}" to proceed.
+          </p>
           <textarea
-            style={{ width: '100%', height: '60px', fontSize: '12px' }}
+            className="shame-textarea"
             onPaste={(e)=>{e.preventDefault(); setFeedbackText("No pasting allowed >:(");
               return false;
             }}
@@ -46,9 +47,9 @@ export default function Shame(props:any) {
       </div>
     );
   } else {
-    return ( 
+    return (
       <div className="shame-drag-drop">
-        
+
       </div>
     )
   }
