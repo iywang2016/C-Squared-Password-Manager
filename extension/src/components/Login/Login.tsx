@@ -1,18 +1,9 @@
 import React, { useState } from 'react';
 import type { MouseEvent } from 'react';
-import { sha256, deriveMasterKey, hex2buf } from '../utils/encrypt';
-import { loginState } from '../App';
-
-// Define the expected structure for our webhook payload
-interface WebhookPayload {
-  username: string;
-  timestamp: number;
-  [key: string]: unknown;
-}
-
-interface SaltResponse {
-  saltHex: string;
-}
+import { sha256, deriveMasterKey, hex2buf } from '../../utils/encrypt';
+import type { WebhookPayload, SaltResponse } from '../../types';
+import { loginState } from '../../App';
+import './Login.css';
 
 export default function Login() {
   const [username, setUsername] = useState('');
@@ -50,7 +41,7 @@ export default function Login() {
             const saltedPass = salt + masterPass;
             const actualSaltedHashedPass = await sha256(saltedPass);
             const expectedSaltedHashedPass = saltAndPass.values().next().value;
-      
+
             if (actualSaltedHashedPass === expectedSaltedHashedPass) {
               setStatus("Successfully logged in as " + username);
               loginState.masterUser = username;
@@ -76,7 +67,7 @@ export default function Login() {
   return (
     <div className="login-component">
       <h3>Login</h3>
-      <form style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      <form className="login-form">
         <input
           type="text"
           placeholder="Username"
