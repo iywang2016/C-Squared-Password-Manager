@@ -41,43 +41,36 @@ export default function Register() {
         if (!username) {
           setStatus("Master username must be at least 1 character");
         } else {
-          // Check if master username exists
-          const checkMessage = {
-            type: "CHECK_MASTER_EXISTS",
-            masterUser: username
+          const salt = buf2hex(generateSalt());
+          const saltedPass = salt + masterPass;
+          const saltedHashedPass = await sha256(saltedPass);
+  
+          const newMaster = {
+            pass: saltedHashedPass,
+            salt: salt,
+            auth: "TESTING_AUTH"
           };
-
-          console.log("Sending CHECK_MASTER_EXISTS message");
-          const response = await chrome.runtime.sendMessage(checkMessage);
-          
-          if (!response.success || response.data === "true") {
-            setStatus("There is already a user with the username '" + username + "', " +
-                      "please choose a different one!");
-          } else {
-            const salt = buf2hex(generateSalt());
-            const saltedPass = salt + masterPass;
-            const saltedHashedPass = await sha256(saltedPass);
-    
-            const newMaster = {
-              pass: saltedHashedPass,
-              salt: salt,
-              auth: "TESTING_AUTH"
-            };
-    
-            const registerMessage = {
-              type: "ADD_MASTER",
-              masterUser: username,
-              newMaster: newMaster
-            };
-    
-            const registerResponse = await chrome.runtime.sendMessage(registerMessage);
-    
-            if (registerResponse.success) {
+  
+          const registerMessage = {
+            type: "ADD_MASTER",
+            masterUser: username,
+            newMaster: newMaster
+          };
+  
+          const registerResponse = await chrome.runtime.sendMessage(registerMessage);
+  
+          if (registerResponse.success) {
+            const added = (registerResponse.data === "true");
+            console.log(registerResponse);
+            if (added) {
               setStatus("Registration successful!");
               await triggerWebhook('Registered User', { username, timestamp: Date.now() });
             } else {
-              setStatus("Registration failed. Error: " + registerResponse.error);
+              setStatus("There is already a user with the username '" + username + "', " +
+                      "please choose a different one!");
             }
+          } else {
+            setStatus("Registration failed. Error: " + registerResponse.error);
           }
         }
       }

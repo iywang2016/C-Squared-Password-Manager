@@ -94,11 +94,11 @@ public class DAOController {
   }
 
   @PutMapping("add_master/{masterUsername}")
-  public void addMasterCredentials(@PathVariable String masterUsername,
-                                   @RequestBody MasterCredentialDTO newMaster) {
-    masterCredentialDao.addMasterCredentials(masterUsername,
-                                             newMaster.getPass(),
-                                             newMaster.getSalt(),
-                                             newMaster.getAuth());
+  public boolean  addMasterCredentials(@PathVariable String masterUsername,
+                                       @RequestBody MasterCredentialDTO newMaster) {
+    return masterCredentialDao.addMasterCredentials(masterUsername,
+                                                    newMaster.getPass(),
+                                                    newMaster.getSalt(),
+                                                    newMaster.getAuth());
   }
 }

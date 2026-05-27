@@ -28,19 +28,24 @@ public class MasterCredentialDAO {
   }
 
   /**
-   * Adds a new entry or overrides the existing entry in the MasterCredentials
-   * database, using username as the primary key.
+   * Adds a new entry in the MasterCredentials database if it doesn't
+   * already exist, using username as the primary key.
    * 
    * @param username username (primary key) of the entry to add
    * @param pass     hashed and salted password to map to username
    * @param salt     salt used for pass
    * @param auth     either an email address ([^\s]+@[^\s]+.[^\s]+)
    *                 or phone number     
+   * @return         true if the credentials were added, false otherwise
    */
-  public void addMasterCredentials(String username, String pass,
+  public boolean addMasterCredentials(String username, String pass,
                                    String salt, String auth) {
+    if (checkMasterCredentialsExist(username)) {
+      return false;
+    }
     MasterCredential mc = new MasterCredential(username, pass, salt, auth);
     masterCredentialRepository.save(mc);
+    return true;
   }
 
   /**
