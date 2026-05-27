@@ -8,7 +8,6 @@
 - Has all the google extension and TS stuff
     - Start with google and expand to firefox later
     - React TS + Vite to build
-    - Note from Jon: I hate webback. I hate babel. We are using Vite. :\)
 
 ### shared/
 - Typescript types nothing cool

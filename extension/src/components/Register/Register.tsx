@@ -1,18 +1,11 @@
 import React, { useState } from 'react';
 import type { MouseEvent } from 'react';
-import { generateSalt, deriveMasterKey, createAuthHash, buf2hex, sha256 } from '../utils/encrypt';
-import { determineStrength } from '../utils/encrypt';
-import Shame from '../components/Shame';
-import { loginState } from '../App';
-
-// Could move this out to a separate file, it's also used in login.tsx being lazy though
-// @cady do you want to do this?
-interface WebhookPayload {
-  username: string;
-  timestamp: number;
-  [key: string]: unknown;
-}
-
+import { generateSalt, deriveMasterKey, createAuthHash, buf2hex, sha256 } from '../../utils/encrypt';
+import { determineStrength } from '../../utils/encrypt';
+import Shame from '../Shame/Shame';
+import type { WebhookPayload } from '../../types';
+import { loginState } from '../../App';
+import './Register.css';
 
 export default function Register() {
   const [username, setUsername] = useState('');
@@ -20,7 +13,7 @@ export default function Register() {
   const [status, setStatus] = useState('');
   const [showShame, setShowShame] = useState(false);
   const [issues, setIssues] = useState<string[]>([]);
-  
+
   const triggerWebhook = async (eventType: string, payload: WebhookPayload) => {
     console.log(`This ${eventType} finished and with payload:`, payload);
   };
@@ -84,12 +77,11 @@ export default function Register() {
     }
   };
 
-  // Add separate CSS later temp classnames and style for now
   return (
     <div className="register-component">
       {!showShame ? (<div>
       <h3>Create Account</h3>
-        <form style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <form className="register-form">
           {!showShame && <input
             type="text"
             placeholder="New Username"

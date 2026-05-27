@@ -2,9 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 import { findLoginFields, fillField } from './content/index';
 import { decryptAES256, determineStrength, encryptAES256, encryptAES256WithIV, generatePassword, hex2buf, buf2hex } from './utils/encrypt';
-import Login from './components/Login';
-import Register from './components/Register';
-import Shame from './components/Shame';
+import Login from './components/Login/Login';
+import Register from './components/Register/Register';
+import Shame from './components/Shame/Shame';
 
 interface LoginState {
   masterUser?: string,
@@ -72,25 +72,25 @@ export default function App() {
   useEffect(() => {
     showShameRef.current = showShame;
   }, [showShame]);
-  
+
   useEffect(() => {
     const checkFieldsInterval = setInterval(() => {
       const fields = findLoginFields();
-      
+
       if (fields && fields.usernameField != null) {
         const currentUsername = fields.usernameField.value;
         const currentPassword = fields.passwordField.value;
 
         if (currentUsername !== oldUserPass.current.username ||
             currentPassword !== oldUserPass.current.password) {
-          oldUserPass.current = { username: currentUsername, 
-                                  password: currentPassword }; 
+          oldUserPass.current = { username: currentUsername,
+                                  password: currentPassword };
           lastChangeTime.current = Date.now();
           alreadyChecked.current = false;
         } else {
           const lastChanged = Date.now() - lastChangeTime.current;
-          if (lastChanged > 2000 
-            && !showShameRef.current 
+          if (lastChanged > 2000
+            && !showShameRef.current
             && oldUserPass.current.password !== ''
             && oldUserPass.current.username !== ''
             && !alreadyChecked.current) {
@@ -225,7 +225,7 @@ export default function App() {
     const response = await chrome.runtime.sendMessage(addMessage);
 
     if (response.success) {
-      setOutput("Successfully saved username and password for " + username); 
+      setOutput("Successfully saved username and password for " + username);
     } else {
       setOutput("Failed to save username :( error: " + response.error);
     }
@@ -259,7 +259,7 @@ export default function App() {
 
         // TODO?: maybe display why the password is bad? since
         // determineStrength returns a list of potential issues
-        
+
         const issue = await determineStrength(password, loginState.masterUser, loginState.masterKey);
         if (issue.length != 0) {
           setOutput("That was very shameful :(");
@@ -340,64 +340,48 @@ export default function App() {
       }}
     >
       <div className="drag-handle" onMouseDown={handleMouseDown}></div>
-      <div className="popup-content" style={{ position: 'relative' }}>
-
-        {/* Close Button */}
-        <button
-          onClick={() => setIsVisible(false)}
-          style={{
-            position: 'absolute',
-            top: '10px',
-            right: '10px',
-            background: 'none',
-            border: 'none',
-            fontSize: '16px',
-            fontWeight: 'bold',
-            cursor: 'pointer',
-            padding: '5px'
-          }}
-          aria-label="Close"
-        >
-          ✕
-        </button>
-        <button
-          onClick={() => handleLogOut()}
-          style={{
-            position: 'absolute',
-            top: '10px',
-            right: '40px',
-            background: 'none',
-            border: 'none',
-            fontSize: '16px',
-            fontWeight: 'bold',
-            cursor: 'pointer',
-            padding: '5px'
-          }}
-          aria-label="Log Out"
-        >
-          Log Out
-        </button>
-        <div>
+      <div className="popup-content">
+        <div className="header-row">
           <h2>C_Squared PM</h2>
+
+          <div className="header-actions">
+            <button
+              onClick={() => handleLogOut()}
+              className="action-button logout-button"
+              aria-label="Log Out"
+            >
+              Log Out
+            </button>
+            <button
+              onClick={() => setIsVisible(false)}
+              className="action-button close-button"
+              aria-label="Close"
+            >
+              X
+            </button>
+          </div>
+        </div>
+
+        <div>
           <p className="status-text">{output}</p>
           {!showShame ? (<div>
 
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginBottom: '15px' }}>
+          <div className="nav-container">
             <button
               onClick={() => setCurrentView('login')}
-              style={{ fontWeight: currentView === 'login' ? 'bold' : 'normal' }}
+              className={`nav-button ${currentView === 'login' ? 'active' : ''}`}
             >
               Login
             </button>
             <button
               onClick={() => setCurrentView('register')}
-              style={{ fontWeight: currentView === 'register' ? 'bold' : 'normal' }}
+              className={`nav-button ${currentView === 'register' ? 'active' : ''}`}
             >
               Register
             </button>
             <button
               onClick={() => setCurrentView('autofill')}
-              style={{ fontWeight: currentView === 'autofill' ? 'bold' : 'normal' }}
+              className={`nav-button ${currentView === 'autofill' ? 'active' : ''}`}
             >
               Autofill
             </button>
@@ -409,7 +393,6 @@ export default function App() {
             <button
               className="autofill-button"
               onClick={handleAutofill}
-              style={{ width: '100%', padding: '10px' }}
             >
               Autofill Current Site
             </button>
