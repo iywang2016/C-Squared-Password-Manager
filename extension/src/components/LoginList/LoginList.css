@@ -59,3 +59,23 @@
   font-family: monospace;
   color: #5f6368;
 }
+
+.toggle-visibility-button {
+  background: none;
+  border: none;
+  color: #16a34a;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 12px;
+  padding: 4px;
+  transition: color 0.2s;
+}
+
+.toggle-visibility-button:hover,
+.toggle-visibility-button:focus,
+.toggle-visibility-button:focus-visible {
+  color: #15803d;
+  text-decoration: underline;
+  outline: none;
+  background-color: transparent;
+}
