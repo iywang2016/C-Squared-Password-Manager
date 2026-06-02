@@ -1,13 +1,17 @@
 import React, { useState } from 'react';
 import type { MouseEvent } from 'react';
-import { generateSalt, deriveMasterKey, createAuthHash, buf2hex, sha256 } from '../../utils/encrypt';
+import { generateSalt, deriveMasterKey, createAuthHash, buf2hex, sha256, exportMasterKey } from '../../utils/encrypt';
 import { determineStrength } from '../../utils/encrypt';
 import Shame from '../Shame/Shame';
 import type { WebhookPayload } from '../../types';
 import { loginState } from '../../App';
 import './Register.css';
 
-export default function Register() {
+interface RegisterProps {
+  onRegisterSuccess?: (username: string) => void;
+}
+
+export default function Register({ onRegisterSuccess }: RegisterProps) {
   const [username, setUsername] = useState('');
   const [masterPass, setMasterPass] = useState('');
   const [status, setStatus] = useState('');
@@ -23,7 +27,6 @@ export default function Register() {
     setStatus("Registering...");
 
     try {
-      // Before encrypting and allowing password, check strength and shame first
       const issue = await determineStrength(masterPass);
       if (issue.length != 0) {
         setStatus("That was very shameful :(");
@@ -34,33 +37,49 @@ export default function Register() {
         if (!username) {
           setStatus("Master username must be at least 1 character");
         } else {
-          const salt = buf2hex(generateSalt());
+          const saltBuffer = generateSalt();
+          const salt = buf2hex(saltBuffer);
           const saltedPass = salt + masterPass;
           const saltedHashedPass = await sha256(saltedPass);
-  
+
           const newMaster = {
             pass: saltedHashedPass,
             salt: salt,
             auth: "TESTING_AUTH"
           };
-  
+
           const registerMessage = {
             type: "ADD_MASTER",
             masterUser: username,
             newMaster: newMaster
           };
-  
+
           const registerResponse = await chrome.runtime.sendMessage(registerMessage);
-  
+
           if (registerResponse.success) {
             const added = (registerResponse.data === "true");
             console.log(registerResponse);
             if (added) {
               setStatus("Registration successful!");
+              const key = await deriveMasterKey(masterPass, saltBuffer);
+              loginState.masterUser = username;
+              loginState.masterKey = key;
+
+              const exportedKey = await exportMasterKey(key);
+              await chrome.runtime.sendMessage({
+                type: "STORE_MASTER_KEY",
+                key: exportedKey,
+                username: username
+              });
+
               await triggerWebhook('Registered User', { username, timestamp: Date.now() });
+
+              if (onRegisterSuccess) {
+                onRegisterSuccess(username);
+              }
+
             } else {
-              setStatus("There is already a user with the username '" + username + "', " +
-                      "please choose a different one!");
+              setStatus("There is already a user with the username '" + username + "', please choose a different one!");
             }
           } else {
             setStatus("Registration failed. Error: " + registerResponse.error);
@@ -80,7 +99,7 @@ export default function Register() {
   return (
     <div className="register-component">
       {!showShame ? (<div>
-      <h3>Create Account</h3>
+        <h3>Create Account</h3>
         <form className="register-form">
           {!showShame && <input
             type="text"
@@ -102,7 +121,7 @@ export default function Register() {
         </form>
       </div>
       ) : (
-        <Shame setShame={setShowShame} issues={issues}/>
+        <Shame setShame={setShowShame} issues={issues} />
       )}
       {status && <p className="status-text">{status}</p>}
     </div>

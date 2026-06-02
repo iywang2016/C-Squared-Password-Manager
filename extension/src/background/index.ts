@@ -2,26 +2,33 @@
 // - min 15 characters since it's a master password
 const MIN_PASSWORD_LENGTH: number = 15;
 
-// Store the session key as long as the browser stays open
-let sessionMasterKey: CryptoKey | null = null;
+// Store the session key and user as long as the browser stays open
+let sessionMasterKey: string | null = null;
+let sessionMasterUser: string | null = null;
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
   // Check for successful logins from popup
   if (message.type === "STORE_MASTER_KEY") {
     sessionMasterKey = message.key;
+    sessionMasterUser = message.username;
     console.log("Master key secured in background memory.");
     sendResponse({ success: true });
   }
 
   // Check requests from your popup to see if the user is currently logged in
   else if (message.type === "CHECK_LOGIN_STATUS") {
-    sendResponse({ isLoggedIn: sessionMasterKey !== null });
+    sendResponse({
+      isLoggedIn: sessionMasterKey !== null,
+      username: sessionMasterUser,
+      key: sessionMasterKey
+    });
   }
 
   // Clear session key on logout
   else if (message.type === "LOGOUT") {
     sessionMasterKey = null;
+    sessionMasterUser = null;
     sendResponse({ success: true });
   }
 
@@ -50,14 +57,14 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(message.newLogin)
     })
-    .then(response => response.text())
-    .then(data => {
-      sendResponse({ success: true, data: data });
-    })
-    .catch(error => {
-      console.error("Could not add password", error);
-      sendResponse({ success: false, error: error.message });
-    });
+      .then(response => response.text())
+      .then(data => {
+        sendResponse({ success: true, data: data });
+      })
+      .catch(error => {
+        console.error("Could not add password", error);
+        sendResponse({ success: false, error: error.message });
+      });
 
     const domainUrl = `http://localhost:8080/database/add_domain/${message.masterUser}/${message.domain}`;
 
@@ -65,14 +72,14 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' }
     })
-    .then(response => response.text())
-    .then(data => {
-      sendResponse({ success: true, data: data });
-    })
-    .catch(error => {
-      console.error("Could not add domain", error);
-      sendResponse({ success: false, error: error.message });
-    });
+      .then(response => response.text())
+      .then(data => {
+        sendResponse({ success: true, data: data });
+      })
+      .catch(error => {
+        console.error("Could not add domain", error);
+        sendResponse({ success: false, error: error.message });
+      });
 
     return true;
   }
@@ -82,14 +89,14 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     const url = `http://localhost:8080/database/get_passwords/${message.masterUser}/${message.domain}`;
 
     fetch(url)
-    .then(response => response.text())
-    .then(data => {
-      sendResponse({ success: true, data: data });
-    })
-    .catch(error => {
-      console.error("Could not get password", error);
-      sendResponse({ success: false, error: error.message });
-    });
+      .then(response => response.text())
+      .then(data => {
+        sendResponse({ success: true, data: data });
+      })
+      .catch(error => {
+        console.error("Could not get password", error);
+        sendResponse({ success: false, error: error.message });
+      });
     return true;
   }
 
@@ -102,14 +109,14 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(message.newMaster)
     })
-    .then(response => response.text())
-    .then(data => {
-      sendResponse({ success: true, data: data });
-    })
-    .catch(error => {
-      console.error("Could not register master user", error);
-      sendResponse({ success: false, error: error.message });
-    });
+      .then(response => response.text())
+      .then(data => {
+        sendResponse({ success: true, data: data });
+      })
+      .catch(error => {
+        console.error("Could not register master user", error);
+        sendResponse({ success: false, error: error.message });
+      });
 
     return true;
   }
@@ -119,15 +126,15 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     const url = `http://localhost:8080/database/get_master/${message.masterUser}`;
 
     fetch(url)
-    .then(response => response.text())
-    .then(data => {
-      sendResponse({ success: true, data: data });
-    })
-    .catch(error => {
-      console.error("Could not get master user", error);
-      sendResponse({ success: false, error: error.message });
-    });
-    
+      .then(response => response.text())
+      .then(data => {
+        sendResponse({ success: true, data: data });
+      })
+      .catch(error => {
+        console.error("Could not get master user", error);
+        sendResponse({ success: false, error: error.message });
+      });
+
     return true;
   }
 
@@ -136,15 +143,15 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     const url = `http://localhost:8080/database/get_domains/${message.masterUser}`;
 
     fetch(url)
-    .then(response => response.text())
-    .then(data => {
-      sendResponse({ success: true, data: data });
-    })
-    .catch(error => {
-      console.error("Could not get domains for master user", error);
-      sendResponse({ success: false, error: error.message });
-    });
-    
+      .then(response => response.text())
+      .then(data => {
+        sendResponse({ success: true, data: data });
+      })
+      .catch(error => {
+        console.error("Could not get domains for master user", error);
+        sendResponse({ success: false, error: error.message });
+      });
+
     return true;
   }
 

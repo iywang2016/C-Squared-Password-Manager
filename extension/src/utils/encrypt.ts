@@ -27,7 +27,7 @@ export async function determineStrength(password: string, masterUser?: string, m
   }
 
   checkZxcvbn(password, issues);
-  
+
   if (masterUser && masterKey) {
     await checkPasswordUsed(masterUser, masterKey, password, issues);
   }
@@ -74,7 +74,7 @@ async function checkPasswordUsed(masterUser: string, masterKey: CryptoKey, passw
  * @returns master password
  */
 export function generatePassword(): string {
-  let chars = 
+  let chars =
     "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*()-_=+[]{}<>?";
   let rands = window.crypto.getRandomValues(new Uint8Array(MIN_PASSWORD_LENGTH));
   let password = "";
@@ -134,7 +134,7 @@ export async function sha256(plaintext: string): Promise<string> {
  * returns string version of the given buffer/hash
  * @param arrayBuffer - hash to turn into a string
  */
-function hashToString(arrayBuffer : ArrayBuffer) {
+function hashToString(arrayBuffer: ArrayBuffer) {
   const uint8View = new Uint8Array(arrayBuffer);
   return Array.from(uint8View)
     .map((b) => b.toString(16).padStart(2, "0"))
@@ -145,7 +145,7 @@ function hashToString(arrayBuffer : ArrayBuffer) {
  * returns true if res has a matching hash suffix with a nonzero count
  * (representing a likely-matching password in the database); returns false otherwise
  * @param hashSuffix - suffix of the user's currently-being-tested hashed password
- * @param res - contains suffixes and counts corresponding to the API response when 
+ * @param res - contains suffixes and counts corresponding to the API response when
  *    querying with the hash prefix
  * @returns  true if res has a matching hash suffix with a nonzero count
  */
@@ -166,7 +166,7 @@ export function hasMatch(hashSuffix: string, res: string[]): boolean {
 /**
  * queries API of pawned passwords with the first 5 digits of this hash
  * @param hashPrefix - first 5 digits of the user's currently-being-tested hashed password
- * @returns response which contains all suffixes corresponding to that prefix, 
+ * @returns response which contains all suffixes corresponding to that prefix,
  * along with the count of passwords in their database matching that prefix & suffix
  */
 async function getHashSuffixes(hashPrefix: string): Promise<string[]> {
@@ -175,19 +175,19 @@ async function getHashSuffixes(hashPrefix: string): Promise<string[]> {
     headers.set('Content-Type', 'application/json');
     headers.set('Accept', 'application/json');
     headers.set('Add-Padding', 'true'); // pads responses by random amount
-  
+
     let site: string = "https://api.pwnedpasswords.com/range/" + hashPrefix;
-    const req: RequestInfo = new Request(site, { method: 'GET', headers: headers});
+    const req: RequestInfo = new Request(site, { method: 'GET', headers: headers });
     // return fetch(req)
     //   .then(res => res.json())
     //   .then(res => {return res as string[];}); // todo: prob need to modify - copied from example
     const result = fetch(site, req)
       .then(async resp => await resp.text())
       .then(data => data.split('\n'))
-    .catch(error => {
-      console.error("Failed to access pawned passwords API", error);
-      return [];
-    });
+      .catch(error => {
+        console.error("Failed to access pawned passwords API", error);
+        return [];
+      });
     return result;
     // return resp.json().then(res => { return res as string[]; });
   } catch {
@@ -284,7 +284,7 @@ export async function encryptAES256(masterKey: CryptoKey, plaintext: string): Pr
   let encoded = new TextEncoder().encode(plaintext);
   // encrypt w 128-bit auth tag
   const encrypted = await window.crypto.subtle.encrypt(
-          { name: 'AES-GCM', iv: iv, tagLength: 128}, masterKey, encoded);
+    { name: 'AES-GCM', iv: iv, tagLength: 128 }, masterKey, encoded);
   return {
     encryptedPass: buf2hex(encrypted),
     iv: buf2hex(iv)
@@ -302,7 +302,7 @@ export async function encryptAES256WithIV(masterKey: CryptoKey, plaintext: strin
   let encoded = new TextEncoder().encode(plaintext);
   // encrypt w 128-bit auth tag
   const encrypted = await window.crypto.subtle.encrypt(
-          { name: 'AES-GCM', iv: iv, tagLength: 128}, masterKey, encoded);
+    { name: 'AES-GCM', iv: iv, tagLength: 128 }, masterKey, encoded);
   return buf2hex(encrypted);
 }
 
@@ -313,8 +313,30 @@ export async function encryptAES256WithIV(masterKey: CryptoKey, plaintext: strin
  * @param iv - initialization vector used when encrypting this ciphertext - TODO: how to save/find it?
  * @returns promise of decrypted ciphertext (aka plaintext)
  */
-export async function decryptAES256(masterKey: CryptoKey, ciphertext: ArrayBuffer, iv : Uint8Array<ArrayBuffer>): Promise<string> {
+export async function decryptAES256(masterKey: CryptoKey, ciphertext: ArrayBuffer, iv: Uint8Array<ArrayBuffer>): Promise<string> {
   let decrypted = await window.crypto.subtle.decrypt(
-          {name: 'AES-GCM', iv: iv, tagLength: 128}, masterKey, ciphertext);
+    { name: 'AES-GCM', iv: iv, tagLength: 128 }, masterKey, ciphertext);
   return new TextDecoder().decode(decrypted);
+}
+
+/**
+ * Exports the master key to a raw hex string for background storage
+ */
+export async function exportMasterKey(masterKey: CryptoKey): Promise<string> {
+  const exportedKey = await window.crypto.subtle.exportKey("raw", masterKey);
+  return buf2hex(exportedKey);
+}
+
+/**
+ * Imports the master key back into a CryptoKey from a hex string
+ */
+export async function importMasterKey(hexString: string): Promise<CryptoKey> {
+  const buffer = hex2buf(hexString);
+  return window.crypto.subtle.importKey(
+    "raw",
+    buffer,
+    { name: "AES-GCM", length: 256 },
+    true,
+    ["encrypt", "decrypt"]
+  );
 }

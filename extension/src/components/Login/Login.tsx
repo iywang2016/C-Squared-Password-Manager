@@ -1,11 +1,15 @@
 import React, { useState } from 'react';
 import type { MouseEvent } from 'react';
-import { sha256, deriveMasterKey, hex2buf } from '../../utils/encrypt';
-import type { WebhookPayload, SaltResponse } from '../../types';
+import { sha256, deriveMasterKey, hex2buf, exportMasterKey } from '../../utils/encrypt';
+import type { WebhookPayload } from '../../types';
 import { loginState } from '../../App';
 import './Login.css';
 
-export default function Login() {
+interface LoginProps {
+  onLoginSuccess?: (username: string) => void;
+}
+
+export default function Login({ onLoginSuccess }: LoginProps) {
   const [username, setUsername] = useState('');
   const [masterPass, setMasterPass] = useState('');
   const [status, setStatus] = useState('');
@@ -44,9 +48,23 @@ export default function Login() {
 
             if (actualSaltedHashedPass === expectedSaltedHashedPass) {
               setStatus("Successfully logged in as " + username);
+
+              const key = await deriveMasterKey(masterPass, hex2buf(salt));
               loginState.masterUser = username;
-              loginState.masterKey = await deriveMasterKey(masterPass, hex2buf(salt));
+              loginState.masterKey = key;
+
+              const exportedKey = await exportMasterKey(key);
+              await chrome.runtime.sendMessage({
+                type: "STORE_MASTER_KEY",
+                key: exportedKey,
+                username: username
+              });
+
               await triggerWebhook('USER_LOGIN_SUCCESS', { username, timestamp: Date.now() });
+
+              if (onLoginSuccess) {
+                onLoginSuccess(username);
+              }
             } else {
               setStatus("Password incorrect; please try again.");
             }

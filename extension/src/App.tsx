@@ -1,17 +1,18 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 import { findLoginFields, fillField } from './content/index';
-import { decryptAES256, determineStrength, encryptAES256, encryptAES256WithIV, generatePassword, hex2buf, buf2hex } from './utils/encrypt';
+import { decryptAES256, determineStrength, encryptAES256, generatePassword, hex2buf, importMasterKey } from './utils/encrypt';
 import Login from './components/Login/Login';
 import Register from './components/Register/Register';
 import Shame from './components/Shame/Shame';
+import LoginList from './components/LoginList/LoginList';
 
 interface LoginState {
   masterUser?: string,
   masterKey?: CryptoKey
 };
 
-export const loginState : LoginState = {};
+export const loginState: LoginState = {};
 
 export default function App() {
   const [isVisible, setIsVisible] = useState(false);
@@ -22,7 +23,8 @@ export default function App() {
   const showShameRef = useRef(showShame);
   const [issues, setIssues] = useState<string[]>([]);
 
-  const [currentView, setCurrentView] = useState<'login' | 'register' | 'autofill'>('login');
+  const [loggedInUser, setLoggedInUser] = useState<string | undefined>(undefined);
+  const [currentView, setCurrentView] = useState<'login' | 'register' | 'autofill' | 'list'>('login');
 
   const offset = useRef({ x: 0, y: 0 });
   const popupRef = useRef<HTMLDivElement>(null);
@@ -30,6 +32,28 @@ export default function App() {
   const oldUserPass = useRef({ username: '', password: '' });
   const lastChangeTime = useRef<number>(Date.now());
   const alreadyChecked = useRef(false);
+
+  useEffect(() => {
+    const restoreSession = async () => {
+      try {
+        const response = await chrome.runtime.sendMessage({ type: "CHECK_LOGIN_STATUS" });
+        if (response && response.isLoggedIn && response.username && response.key) {
+          loginState.masterUser = response.username;
+          loginState.masterKey = await importMasterKey(response.key);
+
+          setLoggedInUser(response.username);
+          setOutput(`Welcome Back, ${response.username}`);
+          setCurrentView('list');
+
+          console.log("Session successfully restored from background!");
+        }
+      } catch (error) {
+        console.log("No background session found or extension context invalidated.", error);
+      }
+    };
+
+    restoreSession();
+  }, []);
 
   window.addEventListener('beforeunload', () => {
     const fields = findLoginFields();
@@ -42,7 +66,7 @@ export default function App() {
       return;
     }
     if (!fields.usernameField.value || !fields.passwordField.value ||
-        fields.usernameField.value.length == 0 || fields.passwordField.value.length == 0) {
+      fields.usernameField.value.length == 0 || fields.passwordField.value.length == 0) {
       setOutput("You don't have a username and password filled in <:(");
       return;
     }
@@ -68,7 +92,6 @@ export default function App() {
     return () => chrome.runtime.onMessage.removeListener(handleMessage);
   }, []);
 
-  // logic for watching password field maybe should change bc it runs every 1s
   useEffect(() => {
     showShameRef.current = showShame;
   }, [showShame]);
@@ -82,9 +105,11 @@ export default function App() {
         const currentPassword = fields.passwordField.value;
 
         if (currentUsername !== oldUserPass.current.username ||
-            currentPassword !== oldUserPass.current.password) {
-          oldUserPass.current = { username: currentUsername,
-                                  password: currentPassword };
+          currentPassword !== oldUserPass.current.password) {
+          oldUserPass.current = {
+            username: currentUsername,
+            password: currentPassword
+          };
           lastChangeTime.current = Date.now();
           alreadyChecked.current = false;
         } else {
@@ -109,14 +134,11 @@ export default function App() {
     }
 
     const domain = window.location.hostname;
-    console.log("Found domain: " + domain);
 
     if (!domain) {
       setOutput("Could not identify site domain");
       return;
     }
-
-    console.log("Starting autofill");
 
     const loginsMap = await getPasswords(domain);
 
@@ -129,9 +151,6 @@ export default function App() {
       setOutput("No logins saved for this site yet!");
       return;
     }
-
-    // TODO: display all possible logins for user to choose from; only
-    // get first one in map for now
 
     const encryptionResult = loginsMap.values().next().value;
     if (!encryptionResult) {
@@ -194,7 +213,6 @@ export default function App() {
     }
 
     if (!getSaltResponse.data) {
-      // Couldn't find master user in database
       setOutput("Could not find master username " + loginState.masterUser);
       return;
     }
@@ -220,8 +238,6 @@ export default function App() {
       newLogin: newLogin
     };
 
-    console.log("Sending ADD_PASSWORD message");
-
     const response = await chrome.runtime.sendMessage(addMessage);
 
     if (response.success) {
@@ -234,7 +250,6 @@ export default function App() {
   const handleCheckPassword = async () => {
     try {
       if (!loginState.masterUser || !loginState.masterKey) {
-        console.error("Must log in to check passwords!");
         return;
       }
 
@@ -246,26 +261,21 @@ export default function App() {
           return;
         }
         if (!fields.usernameField.value || !fields.passwordField.value ||
-            fields.usernameField.value.length == 0 || fields.passwordField.value.length == 0) {
+          fields.usernameField.value.length == 0 || fields.passwordField.value.length == 0) {
           setOutput("You don't have a username and password filled in <:(");
           return;
         }
-        const username = fields.usernameField.value;
         const password = fields.passwordField.value;
 
         if (fields.passwordField.autocomplete.includes("current-password")) {
           return;
         }
 
-        // TODO?: maybe display why the password is bad? since
-        // determineStrength returns a list of potential issues
-
         const issue = await determineStrength(password, loginState.masterUser, loginState.masterKey);
         if (issue.length != 0) {
           setOutput("That was very shameful :(");
           setShowShame(true);
           setIssues(issue);
-          // Set password input field to CSPRN
           const betterPassword = generatePassword();
           fillField(fields.passwordField, betterPassword);
         } else {
@@ -280,6 +290,10 @@ export default function App() {
   const handleLogOut = async () => {
     loginState.masterUser = undefined;
     loginState.masterKey = undefined;
+    setLoggedInUser(undefined);
+    setOutput("Welcome Back");
+    setCurrentView('login');
+    await chrome.runtime.sendMessage({ type: "LOGOUT" });
   }
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -345,13 +359,15 @@ export default function App() {
           <h2>C_Squared PM</h2>
 
           <div className="header-actions">
-            <button
-              onClick={() => handleLogOut()}
-              className="action-button logout-button"
-              aria-label="Log Out"
-            >
-              Log Out
-            </button>
+            {loggedInUser && (
+              <button
+                onClick={() => handleLogOut()}
+                className="action-button logout-button"
+                aria-label="Log Out"
+              >
+                Log Out
+              </button>
+            )}
             <button
               onClick={() => setIsVisible(false)}
               className="action-button close-button"
@@ -366,38 +382,72 @@ export default function App() {
           <p className="status-text">{output}</p>
           {!showShame ? (<div>
 
-          <div className="nav-container">
-            <button
-              onClick={() => setCurrentView('login')}
-              className={`nav-button ${currentView === 'login' ? 'active' : ''}`}
-            >
-              Login
-            </button>
-            <button
-              onClick={() => setCurrentView('register')}
-              className={`nav-button ${currentView === 'register' ? 'active' : ''}`}
-            >
-              Register
-            </button>
-            <button
-              onClick={() => setCurrentView('autofill')}
-              className={`nav-button ${currentView === 'autofill' ? 'active' : ''}`}
-            >
-              Autofill
-            </button>
-          </div>
+            <div className="nav-container">
+              {!loggedInUser ? (
+                <>
+                  <button
+                    onClick={() => setCurrentView('login')}
+                    className={`nav-button ${currentView === 'login' ? 'active' : ''}`}
+                  >
+                    Login
+                  </button>
+                  <button
+                    onClick={() => setCurrentView('register')}
+                    className={`nav-button ${currentView === 'register' ? 'active' : ''}`}
+                  >
+                    Register
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setCurrentView('autofill')}
+                    className={`nav-button ${currentView === 'autofill' ? 'active' : ''}`}
+                  >
+                    Autofill
+                  </button>
+                  <button
+                    onClick={() => setCurrentView('list')}
+                    className={`nav-button ${currentView === 'list' ? 'active' : ''}`}
+                  >
+                    List
+                  </button>
+                </>
+              )}
+            </div>
 
-          {currentView === 'login' && <Login />}
-          {currentView === 'register' && <Register />}
-          {currentView === 'autofill' && (
-            <button
-              className="autofill-button"
-              onClick={handleAutofill}
-            >
-              Autofill Current Site
-            </button>
-          )}
-          </div>) : (<Shame setShame={setShowShame} issues={issues}/>)}
+            {currentView === 'login' && (
+              <Login onLoginSuccess={(user) => {
+                setOutput(`Welcome Back, ${user}`);
+                setLoggedInUser(user);
+                setCurrentView('list');
+              }} />
+            )}
+            {currentView === 'register' && (
+              <Register onRegisterSuccess={(user) => {
+                setOutput(`Welcome, ${user}`);
+                setLoggedInUser(user);
+                setCurrentView('list');
+              }} />
+            )}
+
+            {currentView === 'autofill' && (
+              <button
+                className="autofill-button"
+                onClick={handleAutofill}
+              >
+                Autofill Current Site
+              </button>
+            )}
+
+            {currentView === 'list' && (
+              loggedInUser ? (
+                <LoginList masterUsername={loggedInUser} />
+              ) : (
+                <p className="status-text">Please log in to view your passwords.</p>
+              )
+            )}
+          </div>) : (<Shame setShame={setShowShame} issues={issues} />)}
         </div>
       </div>
     </div>
@@ -411,11 +461,7 @@ export async function getPasswords(domain: string): Promise<Map<string, string> 
     domain: domain
   }
 
-  console.log("Sending GET_PASSWORDS message");
-
   const response = await chrome.runtime.sendMessage(getMessage);
-
-  console.log("Fetched passwords", response);
 
   if (!response.success) {
     return;

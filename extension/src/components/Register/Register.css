@@ -24,7 +24,8 @@
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 
-.register-form input:focus {
+.register-form input[type="text"]:focus,
+.register-form input[type="password"]:focus {
   outline: none;
   border-color: #16a34a;
   box-shadow: 0 0 0 2px rgba(22, 163, 74, 0.2);
@@ -43,6 +44,12 @@
   transition: background-color 0.2s;
 }
 
-.register-form button:hover {
+.register-form button:hover,
+.register-form button:focus {
   background-color: #15803d;
+  outline: none;
+}
+
+.register-form button:active {
+  background-color: #166534;
 }

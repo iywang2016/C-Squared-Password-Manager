@@ -1,0 +1,61 @@
+.login-list-container {
+  width: 100%;
+}
+
+.login-list-title {
+  margin: 0 0 12px 0;
+  font-size: 15px;
+  color: #202124;
+}
+
+.status-text {
+  color: #5f6368;
+  font-size: 14px;
+}
+
+.status-text.error {
+  color: #d93025;
+}
+
+.table-wrapper {
+  max-height: 200px;
+  overflow-y: auto;
+  border: 1px solid #dadce0;
+  border-radius: 6px;
+  padding: 8px;
+}
+
+.login-table {
+  width: 100%;
+  text-align: left;
+  font-size: 13px;
+  border-collapse: collapse;
+}
+
+.login-table thead tr {
+  border-bottom: 1px solid #eee;
+}
+
+.login-table th {
+  padding-bottom: 8px;
+  color: #5f6368;
+  font-weight: 600;
+}
+
+.login-table tbody tr {
+  border-bottom: 1px solid #f1f3f4;
+}
+
+.login-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.login-table td {
+  padding: 8px 4px;
+  color: #202124;
+}
+
+.login-table td.password-cell {
+  font-family: monospace;
+  color: #5f6368;
+}
