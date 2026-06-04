@@ -414,7 +414,7 @@ export default function App() {
 
           {currentView === 'list' && (
             loggedInUser ? (
-              <LoginList masterUsername={loggedInUser} />
+              <LoginList masterUsername={loggedInUser} saltedHashedPass={loginState.saltedHashedPass || ""} />
             ) : (
               <p className="status-text">Please log in to view your passwords.</p>
             )

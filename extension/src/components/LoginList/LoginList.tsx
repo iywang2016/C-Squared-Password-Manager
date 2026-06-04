@@ -5,6 +5,7 @@ import { decryptAES256, hex2buf } from '../../utils/encrypt';
 
 interface LoginListProps {
   masterUsername: string;
+  saltedHashedPass: string;
 }
 
 interface LoginEntry {
@@ -14,7 +15,7 @@ interface LoginEntry {
   decryptedPass: string;
 }
 
-export default function LoginList({ masterUsername }: LoginListProps) {
+export default function LoginList({ masterUsername, saltedHashedPass }: LoginListProps) {
   const [logins, setLogins] = useState<LoginEntry[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +40,8 @@ export default function LoginList({ masterUsername }: LoginListProps) {
 
         const getDomainsMessage = {
           type: "GET_DOMAINS",
-          masterUser: masterUsername
+          masterUser: masterUsername,
+          masterPassword: saltedHashedPass
         };
         const domainsResponse = await chrome.runtime.sendMessage(getDomainsMessage);
 
@@ -55,7 +57,8 @@ export default function LoginList({ masterUsername }: LoginListProps) {
           const getPassMessage = {
             type: "GET_PASSWORDS",
             masterUser: masterUsername,
-            domain: domain
+            domain: domain,
+            masterPassword: saltedHashedPass
           };
           const passResponse = await chrome.runtime.sendMessage(getPassMessage);
 
@@ -110,7 +113,7 @@ export default function LoginList({ masterUsername }: LoginListProps) {
     if (masterUsername) {
       fetchAllLogins();
     }
-  }, [masterUsername]);
+  }, [masterUsername, saltedHashedPass]);
 
   if (loading) return <div className="status-text">Loading your saved logins...</div>;
   if (error) return <div className="status-text error">Error: {error}</div>;

@@ -71,7 +71,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     fetch(domainUrl, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(message.masterPassword)
+      body: message.masterPassword
     })
       .then(response => response.text())
       .then(data => {

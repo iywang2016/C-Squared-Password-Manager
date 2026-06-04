@@ -60,8 +60,6 @@ async function checkPasswordUsed(masterUser: string, masterKey: CryptoKey, maste
       const iv = hex2buf(passwordAndIv.split("#")[1]);
 
       const encryptedPass = await encryptAES256WithIV(masterKey, password, iv);
-      console.log("Found " + passwordAndIv);
-      console.log("Made " + encryptedPass + " and " + iv);
       if ((encryptedPass + "#" + buf2hex(iv)) === passwordAndIv) {
         issues.push("You have already used this password before! Choose a different one.");
         return;

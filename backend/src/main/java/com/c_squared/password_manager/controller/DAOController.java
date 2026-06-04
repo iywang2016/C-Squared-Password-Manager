@@ -50,9 +50,6 @@ public class DAOController {
   }
 
   @GetMapping("get_domains/{masterUsername}/{masterPassword}")
-  // public Set<String> getUserDomains(@PathVariable String masterUsername) {
-  //   return userDomainsDao.getUserDomains(masterUsername);
-  // }
   public Set<String> getUserDomains(@PathVariable String masterUsername, 
                                     @PathVariable String masterPassword) {
     return userDomainsDao.getUserDomains(masterUsername, masterPassword);
@@ -71,14 +68,14 @@ public class DAOController {
     return passwordsDao.checkPasswordExists(masterUsername, password, masterPassword);
   }
 
-  @GetMapping("/get_passwords/{masterUsername}/{domain}/{masterPassword}")
+  @GetMapping("get_passwords/{masterUsername}/{domain}/{masterPassword}")
   public Map<String, String> getUserPasswords(@PathVariable String masterUsername,
                                               @PathVariable String domain,
                                               @PathVariable String masterPassword) {
     return passwordsDao.getUserPasswords(masterUsername, domain, masterPassword);
   }
 
-  @PutMapping("/add_password/{masterUsername}/{domain}")
+  @PutMapping("add_password/{masterUsername}/{domain}")
   public void addNewPassword(@PathVariable String masterUsername,
                              @PathVariable String domain,
                              @RequestBody NewLoginDTO newLogin) {

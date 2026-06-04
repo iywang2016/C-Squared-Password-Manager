@@ -63,6 +63,7 @@ export default function Register({ onRegisterSuccess }: RegisterProps) {
               setStatus("Registration successful!");
               const key = await deriveMasterKey(masterPass, saltBuffer);
               loginState.masterUser = username;
+              loginState.saltedHashedPass = saltedHashedPass;
               loginState.masterKey = key;
 
               const exportedKey = await exportMasterKey(key);
