@@ -47,6 +47,8 @@ export default function LoginList({ masterUsername }: LoginListProps) {
           throw new Error(domainsResponse.error || "Failed to fetch domains");
         }
 
+        if (!domainsResponse.data) return [];
+
         const domains: string[] = JSON.parse(domainsResponse.data);
 
         const loginPromises = domains.map(async (domain) => {
@@ -58,6 +60,8 @@ export default function LoginList({ masterUsername }: LoginListProps) {
           const passResponse = await chrome.runtime.sendMessage(getPassMessage);
 
           if (!passResponse.success) return [];
+
+          if (!passResponse.data) return [];
 
           const userPassMap = JSON.parse(passResponse.data);
           const entries = Object.entries(userPassMap);
