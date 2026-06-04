@@ -1,14 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import './App.css';
 import { findLoginFields, fillField } from './content/index';
-import { decryptAES256, determineStrength, encryptAES256, encryptAES256WithIV, generatePassword, hex2buf, buf2hex } from './utils/encrypt';
+import { decryptAES256, determineStrength, encryptAES256, generatePassword, hex2buf, sha256 } from './utils/encrypt';
 import Login from './components/Login/Login';
 import Register from './components/Register/Register';
 import Shame from './components/Shame/Shame';
 
 interface LoginState {
   masterUser?: string,
-  masterKey?: CryptoKey
+  masterKey?: CryptoKey,
+  saltedHashedPass?: string,
+  salt?: string
 };
 
 export const loginState : LoginState = {};
@@ -181,43 +183,45 @@ export default function App() {
       return;
     }
 
-    const getSaltMessage = {
-      type: "GET_MASTER",
-      masterUser: loginState.masterUser
-    };
+    // const getSaltMessage = {
+    //   type: "GET_MASTER",
+    //   masterUser: loginState.masterUser
+    // };
 
-    const getSaltResponse = await chrome.runtime.sendMessage(getSaltMessage);
+    // const getSaltResponse = await chrome.runtime.sendMessage(getSaltMessage);
 
-    if (!getSaltResponse.success) {
-      setOutput("Could not fetch account information. Error: " + getSaltResponse.error);
-      return;
-    }
+    // if (!getSaltResponse.success) {
+    //   setOutput("Could not fetch account information. Error: " + getSaltResponse.error);
+    //   return;
+    // }
 
-    if (!getSaltResponse.data) {
-      // Couldn't find master user in database
-      setOutput("Could not find master username " + loginState.masterUser);
-      return;
-    }
+    // if (!getSaltResponse.data) {
+    //   // Couldn't find master user in database
+    //   setOutput("Could not find master username " + loginState.masterUser);
+    //   return;
+    // }
 
-    const saltAndPass = new Map<string, string>(Object.entries(JSON.parse(getSaltResponse.data)));
-    const salt = saltAndPass.keys().next().value;
-    if (!salt) {
-      setOutput("Could not get salt for master username " + loginState.masterUser);
-      return;
-    }
+    // const saltAndPass = new Map<string, string>(Object.entries(JSON.parse(getSaltResponse.data)));
+    // const salt = saltAndPass.keys().next().value;
+    // if (!salt) {
+    //   setOutput("Could not get salt for master username " + loginState.masterUser);
+    //   return;
+    // }
 
     const encryptionResult = await encryptAES256(loginState.masterKey, password);
 
     const newLogin = {
       username: username,
       passwordAndIv: encryptionResult.encryptedPass + "#" + encryptionResult.iv,
+      masterPassword: loginState.saltedHashedPass
     }
 
     const addMessage = {
       type: "ADD_PASSWORD",
       masterUser: loginState.masterUser,
       domain: domain,
-      newLogin: newLogin
+      newLogin: newLogin,
+      masterPassword: loginState.saltedHashedPass
     };
 
     console.log("Sending ADD_PASSWORD message");
@@ -257,10 +261,7 @@ export default function App() {
           return;
         }
 
-        // TODO?: maybe display why the password is bad? since
-        // determineStrength returns a list of potential issues
-
-        const issue = await determineStrength(password, loginState.masterUser, loginState.masterKey);
+        const issue = await determineStrength(password, loginState.masterUser, loginState.masterKey, loginState.saltedHashedPass);
         if (issue.length != 0) {
           setOutput("That was very shameful :(");
           setShowShame(true);
@@ -280,6 +281,8 @@ export default function App() {
   const handleLogOut = async () => {
     loginState.masterUser = undefined;
     loginState.masterKey = undefined;
+    loginState.salt = undefined;
+    loginState.saltedHashedPass = undefined;
   }
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
@@ -408,7 +411,8 @@ export async function getPasswords(domain: string): Promise<Map<string, string> 
   const getMessage = {
     type: "GET_PASSWORDS",
     masterUser: loginState.masterUser,
-    domain: domain
+    domain: domain,
+    masterPassword: loginState.saltedHashedPass
   }
 
   console.log("Sending GET_PASSWORDS message");

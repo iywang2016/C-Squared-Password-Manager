@@ -49,19 +49,38 @@ public class MasterCredentialDAO {
   }
 
   /**
-   * Queries the MasterCredentials database and attempts to fetch the
-   * salt and hashed & salted password associated with the username.
+   * Queries the MasterCredentials database and attempts to verify
+   * if this is a valid user's login info
    * 
    * @param username username (primary key) of the entry to fetch
-   * @return         [salt, hashed and salted password] corresponding
-   *                 to the username if it exists; null otherwise
+   * @param password password to verify
+   * @return         true if the username and password match, false otherwise
    */
-  public Pair<String, String> getMasterCredentials(String username) {
+  public boolean getMasterCredentials(String username, String password) {
+    Optional<MasterCredential> mc = masterCredentialRepository.findById(username);
+    if (mc.isEmpty()) {
+      return false;
+    }
+    if (!mc.get().getHashedSaltedPass().equals(password)) {
+      return false;
+    }
+    return true;
+  }
+
+  /**
+   * Queries MasterCredentials database and attempts to fetch salt 
+   * associated with the given username
+   * 
+   * @param username  username (primary key) of the entry to fetch
+   * @return          salt corresponding to the username if it exists,
+   *                  else null
+   */
+  public String getMasterSalt(String username) {
     Optional<MasterCredential> mc = masterCredentialRepository.findById(username);
     if (mc.isEmpty()) {
       return null;
     }
-    return Pair.of(mc.get().getSalt(), mc.get().getHashedSaltedPass());
+    return mc.get().getSalt();
   }
 
   /**
@@ -73,9 +92,13 @@ public class MasterCredentialDAO {
    *                 or phone number corresponding to the username
    *                 if it exists; null otherwise
    */
-  public String get2FA(String username) {
+  public String get2FA(String username, String pass) {
     Optional<MasterCredential> mc = masterCredentialRepository.findById(username);
     if (mc.isEmpty()) {
+      return null;
+    }
+    // not authorized to get other users' 2fa
+    if (!mc.get().getHashedSaltedPass().equals(pass)) {
       return null;
     }
     return mc.get().getAuthContact();

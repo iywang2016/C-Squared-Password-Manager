@@ -19,41 +19,49 @@ export default function Login() {
     setStatus("Logging in...");
 
     try {
-      const getMasterMessage = {
-        type: "GET_MASTER",
+      const getSaltMessage = {
+        type: "GET_SALT",
         masterUser: username
       };
+      const getSaltResponse = await chrome.runtime.sendMessage(getSaltMessage);
 
-      const getMasterResponse = await chrome.runtime.sendMessage(getMasterMessage);
-
-      if (!getMasterResponse.success) {
-        setStatus("Could not find account information. Error: " + getMasterResponse.error);
+      if (!getSaltResponse.success) {
+        setStatus("Could not find account information. Error: " + getSaltResponse.error);
       } else {
-        if (!getMasterResponse.data || getMasterResponse.data.length == 0) {
-          // Couldn't find master user in database
+        if (!getSaltResponse.data || getSaltResponse.data.length == 0) {
           setStatus("Could not find username " + username);
         } else {
-          const saltAndPass = new Map<string, string>(Object.entries(JSON.parse(getMasterResponse.data)));
-          const salt = saltAndPass.keys().next().value;
+          const salt = getSaltResponse.data;
+          
           if (!salt) {
-            console.error("Could not get salt for username " + username);
+            console.error("Error logging in with username: " + username + ". Please try again");
           } else {
-            const saltedPass = salt + masterPass;
-            const actualSaltedHashedPass = await sha256(saltedPass);
-            const expectedSaltedHashedPass = saltAndPass.values().next().value;
-
-            if (actualSaltedHashedPass === expectedSaltedHashedPass) {
+            const saltedHashedPass = await sha256(salt + masterPass);
+            const getMasterMessage = {
+              type: "GET_MASTER",
+              masterUser: username,
+              masterPassword: saltedHashedPass
+            };
+            const getMasterResponse = await chrome.runtime.sendMessage(getMasterMessage);
+            
+            if (!getMasterResponse.success) {
+              setStatus("Could not log in. Error: " + getMasterResponse.error);
+            } else if (!getMasterResponse.data || getMasterResponse.data.length == 0) {
+              setStatus("Could not find username " + username);
+              console.error(getMasterResponse);
+            } else if (getMasterResponse.data == "false") {
+              setStatus("Something went wrong, please retry");
+            } else {
               setStatus("Successfully logged in as " + username);
               loginState.masterUser = username;
               loginState.masterKey = await deriveMasterKey(masterPass, hex2buf(salt));
+              loginState.salt = salt;
+              loginState.saltedHashedPass = saltedHashedPass;
               await triggerWebhook('USER_LOGIN_SUCCESS', { username, timestamp: Date.now() });
-            } else {
-              setStatus("Password incorrect; please try again.");
             }
           }
         }
       }
-
     } catch (error: unknown) {
       if (error instanceof Error) {
         console.error("Login error:", error.message);

@@ -4,6 +4,7 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.Set;
 import java.util.Optional;
+import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.stereotype.Service;
 import com.c_squared.password_manager.repository.PasswordsRepository;
 import com.c_squared.password_manager.model.Passwords;
@@ -12,10 +13,13 @@ import com.c_squared.password_manager.model.Passwords;
 public class PasswordsDAO {
   private final PasswordsRepository passwordsRepository;
   private final UserDomainsDAO userDomainsDao;
+  private final MasterCredentialDAO masterCredentialDao;
 
-  public PasswordsDAO(PasswordsRepository passwordsRepository, UserDomainsDAO userDomainsDao) {
+  public PasswordsDAO(PasswordsRepository passwordsRepository, UserDomainsDAO userDomainsDao,
+                      MasterCredentialDAO masterCredentialDao) {
     this.passwordsRepository = passwordsRepository;
     this.userDomainsDao = userDomainsDao;
+    this.masterCredentialDao = masterCredentialDao;
   }
 
   /**
@@ -28,11 +32,13 @@ public class PasswordsDAO {
    * @return               true if the master user has already used this password
    *                       on any domain; false otherwise
    */
-  public boolean checkPasswordExists(String masterUsername, String password) {
+  public boolean checkPasswordExists(String masterUsername, String password, String masterPassword) {
+    checkAuthorized(masterUsername, masterPassword);
+
     // Query UserDomains database to get all of the user's domains
-    Set<String> domains = userDomainsDao.getUserDomains(masterUsername);
+    Set<String> domains = userDomainsDao.getUserDomains(masterUsername, masterPassword);
     for (String domain : domains) {
-      Map<String, String> domainLogins = getUserPasswords(masterUsername, domain);
+      Map<String, String> domainLogins = getUserPasswords(masterUsername, domain, masterPassword);
       if (domainLogins.values().contains(password)) {
         return true;
       }
@@ -52,7 +58,9 @@ public class PasswordsDAO {
    *                       master user for this domain; may be empty if no
    *                       matching credentials are found
    */
-  public Map<String, String> getUserPasswords(String masterUsername, String domain) {
+  public Map<String, String> getUserPasswords(String masterUsername, String domain, String masterPassword) {
+    checkAuthorized(masterUsername, masterPassword);
+
     String key = masterUsername + "#" + domain;
     Optional<Passwords> pwds = passwordsRepository.findById(key);
     Map<String, String> userToPass = new HashMap<>();
@@ -74,7 +82,9 @@ public class PasswordsDAO {
    * @param password       password (encrypted) we are mapping to this username
    */
   public void addNewPassword(String masterUsername, String domain,
-                             String username, String password) {
+                             String username, String password, String masterPassword) {
+    checkAuthorized(masterUsername, masterPassword);
+    
     String key = masterUsername + "#" + domain;
     Optional<Passwords> pwds = passwordsRepository.findById(key);
     if (pwds.isPresent()) {
@@ -90,5 +100,10 @@ public class PasswordsDAO {
       Passwords newPwd = new Passwords(key, userToPass);
       passwordsRepository.save(newPwd);
     }
+  }
+
+  private boolean checkAuthorized(String masterUsername, String masterPassword) {
+    // ensure user is authorized via master password
+    return masterCredentialDao.getMasterCredentials(masterUsername, masterPassword);
   }
 }
