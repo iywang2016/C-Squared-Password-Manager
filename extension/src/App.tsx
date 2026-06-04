@@ -6,6 +6,7 @@ import Login from './components/Login/Login';
 import Register from './components/Register/Register';
 import Shame from './components/Shame/Shame';
 import LoginList from './components/LoginList/LoginList';
+import { stringify } from 'querystring';
 
 interface LoginState {
   masterUser?: string,
@@ -26,7 +27,8 @@ export default function App() {
   const [issues, setIssues] = useState<string[]>([]);
 
   const [loggedInUser, setLoggedInUser] = useState<string | undefined>(undefined);
-  const [currentView, setCurrentView] = useState<'login' | 'register' | 'autofill' | 'list'>('login');
+  const [currentView, setCurrentView] = useState<'login' | 'register' | 'autofill' | 'list' | 'choose_login'>('login');
+  const [availableLogins, setAvailableLogins] = useState(new Map<string, string>);
 
   const offset = useRef({ x: 0, y: 0 });
   const popupRef = useRef<HTMLDivElement>(null);
@@ -126,39 +128,28 @@ export default function App() {
       return;
     }
 
-    const encryptionResult = loginsMap.values().next().value;
+    setAvailableLogins(loginsMap);
+
+    if (loginsMap.size > 1) {
+      setCurrentView("choose_login");
+      return;
+    }
+
+    const chosenUser = loginsMap.keys().next().value;
+
+    if (!chosenUser) {
+      console.error("Could not get login username value");
+      return;
+    }
+
+    const encryptionResult = loginsMap.get(chosenUser);
+    
     if (!encryptionResult) {
       console.error("Could not get login password value");
       return;
     }
 
-    const split = encryptionResult.split("#");
-    const encryptedPass = split[0];
-    const iv = split[1];
-    const decryptedPass = await decryptAES256(loginState.masterKey, hex2buf(encryptedPass).buffer, hex2buf(iv));
-
-    const credentials = {
-      username: loginsMap.keys().next().value,
-      password: decryptedPass,
-    };
-
-    try {
-      const fields = findLoginFields();
-
-      if (fields) {
-        if (fields.usernameField && credentials.username) {
-          fillField(fields.usernameField, credentials.username);
-        }
-        if (fields.passwordField && credentials.password) {
-          fillField(fields.passwordField, credentials.password);
-        }
-        setOutput("Successful Autofill!");
-      } else {
-        setOutput("Bad autofill do better next time >:( Couldn't find fields");
-      }
-    } catch (error: any) {
-      setOutput("Bad login do better next time >:( " + (error.message || "Unknown error"));
-    }
+    await replaceLoginFields(chosenUser, encryptionResult);
   };
 
   const handleSave = async (username: string, password: string) => {
@@ -237,6 +228,15 @@ export default function App() {
     }
   }
 
+  const handleChooseLogin = async (chosenUser: string) => {
+    for (const [user, encryptionResult] of availableLogins.entries()) {
+      if (user === chosenUser) {
+        availableLogins.clear();
+        replaceLoginFields(chosenUser, encryptionResult);
+      }
+    }
+  }
+
   const handleLogOut = async () => {
     loginState.masterUser = undefined;
     loginState.masterKey = undefined;
@@ -255,6 +255,44 @@ export default function App() {
       y: e.clientY - position.y
     };
   };
+
+  const replaceLoginFields = async (chosenUser: string, encryptionResult: string) => {
+    const split = encryptionResult.split("#");
+    const encryptedPass = split[0];
+    const iv = split[1];
+
+    if (!loginState.masterKey) {
+      console.error("Master key not found");
+      return;
+    }
+
+    const decryptedPass = await decryptAES256(loginState.masterKey, hex2buf(encryptedPass).buffer, hex2buf(iv));
+
+    const credentials = {
+      username: chosenUser,
+      password: decryptedPass,
+    };
+
+    try {
+      const fields = findLoginFields();
+
+      if (fields) {
+        if (fields.usernameField && credentials.username) {
+          fillField(fields.usernameField, credentials.username);
+        }
+        if (fields.passwordField && credentials.password) {
+          fillField(fields.passwordField, credentials.password);
+        }
+        setOutput("Successful Autofill!");
+      } else {
+        setOutput("Bad autofill do better next time >:( Couldn't find fields");
+      }
+    } catch (error: any) {
+      setOutput("Bad login do better next time >:( " + (error.message || "Unknown error"));
+    }
+
+    setCurrentView('autofill');
+  }
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -381,6 +419,21 @@ export default function App() {
               setLoggedInUser(user);
               setCurrentView('list');
             }} />
+          )}
+
+          {currentView === 'choose_login' && (
+            <div>
+              <p className="status-text">Choose the login whose information you want to autofill.</p>
+
+              {Array.from(availableLogins.keys()).map((user) =>
+                <button
+                  className="choose-login-button"
+                  onClick={() => handleChooseLogin(user)}
+                >
+                  {user}
+                </button>
+              )}
+            </div>
           )}
 
           {currentView === 'autofill' && (
