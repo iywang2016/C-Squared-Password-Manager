@@ -6,7 +6,7 @@ import Login from './components/Login/Login';
 import Register from './components/Register/Register';
 import Shame from './components/Shame/Shame';
 import LoginList from './components/LoginList/LoginList';
-import { stringify } from 'querystring';
+import * as Constants from './utils/constants';
 
 interface LoginState {
   masterUser?: string,
@@ -156,6 +156,77 @@ export default function App() {
     if (!loginState.masterUser || !loginState.masterKey) {
       console.error("Must log in to save passwords!");
       return;
+    }
+
+    const getDomainsMessage = {
+      type: "GET_DOMAINS",
+      masterUser: loginState.masterUser,
+      masterPassword: loginState.saltedHashedPass
+    };
+    const domainsResponse = await chrome.runtime.sendMessage(getDomainsMessage);
+
+    if (!domainsResponse.success) {
+      throw new Error(domainsResponse.error || "Failed to fetch domains");
+    }
+
+    if (!domainsResponse.data) return [];
+
+    const domains: string[] = JSON.parse(domainsResponse.data);
+
+    const loginPromises = domains.map(async (domain) => {
+      const getPassMessage = {
+        type: "GET_PASSWORDS",
+        masterUser: loginState.masterUser,
+        domain: domain,
+        masterPassword: loginState.saltedHashedPass
+      };
+      const passResponse = await chrome.runtime.sendMessage(getPassMessage);
+
+      if (!passResponse.success) return [];
+
+      if (!passResponse.data) return [];
+
+      const userPassMap = JSON.parse(passResponse.data);
+      const entries = Object.entries(userPassMap);
+
+      const decryptedEntries = await Promise.all(entries.map(async ([username, passwordAndIv]) => {
+        const strPass = passwordAndIv as string;
+        const split = strPass.split("#");
+        const encryptedPass = split[0];
+        const iv = split[1];
+        let decryptedPass = "Error decrypting";
+
+        if (loginState.masterKey) {
+          try {
+            decryptedPass = await decryptAES256(
+              loginState.masterKey,
+              hex2buf(encryptedPass).buffer,
+              hex2buf(iv)
+            );
+          } catch (e) {
+            console.error("Failed to decrypt", e);
+          }
+        }
+
+        return {
+          domain,
+          username,
+          passwordAndIv: strPass,
+          decryptedPass
+        };
+      }));
+
+      return decryptedEntries;
+    });
+
+    const allLoginsArrays = await Promise.all(loginPromises);
+    const combinedLogins = allLoginsArrays.flat();
+    for (const login of combinedLogins) {
+      if (login.decryptedPass === password && login.username !== username) {
+        setShowShame(true);
+        setIssues([Constants.ISSUE_REUSED_PASS]);
+        return;
+      }
     }
 
     const domain = window.location.hostname;
