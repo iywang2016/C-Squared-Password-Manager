@@ -8,4 +8,5 @@ import lombok.RequiredArgsConstructor;
 public class NewLoginDTO {
   private final String username;
   private final String passwordAndIv;
+  private final String masterPassword;
 }
