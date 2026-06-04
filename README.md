@@ -10,14 +10,7 @@
     - React TS + Vite to build
 
 ### shared/
-- Typescript types nothing cool
-
-
-### TODOS
-- Add a Favicon for the extension and an proper icon for the extension in the store
-- Clean up readme and add instructions to build
-  - Roughly just do npm run build and go to chrome to load the build
-
+- Typescript Types
 
 ## Instructions
 ### Requirements
@@ -70,3 +63,7 @@ npm i && npm run build
 2. Toggle Dev Mode
 3. Click Load Unpacked and open the dist/
 4. Play around with the extension by clicking on the puzzle icon in the upper right of the browser tab (labeled "Extensions"), then clicking on the new icon
+5. Note that you need to have the backend running locally to test the front-end extension otherwise things like login won't work
+
+### 5. Test Environments
+1. We have found it to work on all of the websites we've tested after the most recent changes to manually saving logins
