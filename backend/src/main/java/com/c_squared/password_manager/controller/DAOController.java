@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import com.c_squared.password_manager.service.dao.UserDomainsDAO;
 import com.c_squared.password_manager.service.dao.PasswordsDAO;
 import com.c_squared.password_manager.service.dao.MasterCredentialDAO;
@@ -48,26 +49,33 @@ public class DAOController {
       return http.build();
   }
 
-  @GetMapping("get_domains/{masterUsername}")
-  public Set<String> getUserDomains(@PathVariable String masterUsername) {
-    return userDomainsDao.getUserDomains(masterUsername);
+  @GetMapping("get_domains/{masterUsername}/{masterPassword}")
+  // public Set<String> getUserDomains(@PathVariable String masterUsername) {
+  //   return userDomainsDao.getUserDomains(masterUsername);
+  // }
+  public Set<String> getUserDomains(@PathVariable String masterUsername, 
+                                    @PathVariable String masterPassword) {
+    return userDomainsDao.getUserDomains(masterUsername, masterPassword);
   }
 
   @PutMapping("add_domain/{masterUsername}/{domain}")
-  public void addUserDomain(@PathVariable String masterUsername, @PathVariable String domain) {
-    userDomainsDao.addUserDomain(masterUsername, domain);
+  public void addUserDomain(@PathVariable String masterUsername, @PathVariable String domain,
+                            @RequestBody String masterPassword) {
+    userDomainsDao.addUserDomain(masterUsername, domain, masterPassword);
   }
 
-  @GetMapping("check_password_exists/{masterUsername}/{password}")
+  @GetMapping("check_password_exists/{masterUsername}/{password}/{masterPassword}")
   public boolean checkPasswordExists(@PathVariable String masterUsername,
-                                     @PathVariable String password) {
-    return passwordsDao.checkPasswordExists(masterUsername, password);
+                                     @PathVariable String password,
+                                     @PathVariable String masterPassword) {
+    return passwordsDao.checkPasswordExists(masterUsername, password, masterPassword);
   }
 
-  @GetMapping("/get_passwords/{masterUsername}/{domain}")
+  @GetMapping("/get_passwords/{masterUsername}/{domain}/{masterPassword}")
   public Map<String, String> getUserPasswords(@PathVariable String masterUsername,
-                                              @PathVariable String domain) {
-    return passwordsDao.getUserPasswords(masterUsername, domain);
+                                              @PathVariable String domain,
+                                              @PathVariable String masterPassword) {
+    return passwordsDao.getUserPasswords(masterUsername, domain, masterPassword);
   }
 
   @PutMapping("/add_password/{masterUsername}/{domain}")
@@ -75,7 +83,7 @@ public class DAOController {
                              @PathVariable String domain,
                              @RequestBody NewLoginDTO newLogin) {
     passwordsDao.addNewPassword(masterUsername, domain,
-                                newLogin.getUsername(), newLogin.getPasswordAndIv());
+                                newLogin.getUsername(), newLogin.getPasswordAndIv(), newLogin.getMasterPassword());
   }
 
   @GetMapping("check_master_exists/{masterUsername}")
@@ -83,14 +91,20 @@ public class DAOController {
     return masterCredentialDao.checkMasterCredentialsExist(masterUsername);
   }
 
-  @GetMapping("get_master/{masterUsername}")
-  public Pair<String, String> getMasterCredentials(@PathVariable String masterUsername) {
-    return masterCredentialDao.getMasterCredentials(masterUsername);
+  @GetMapping("get_master/{masterUsername}/{masterPassword}")
+  public boolean getMasterCredentials(@PathVariable String masterUsername,
+                                                    @PathVariable String masterPassword) {
+    return masterCredentialDao.getMasterCredentials(masterUsername, masterPassword);
   }
 
-  @GetMapping("get_auth/{masterUsername}")
-  public String get2FA(@PathVariable String masterUsername) {
-    return masterCredentialDao.get2FA(masterUsername);
+  @GetMapping("get_salt/{masterUsername}")
+  public String getMasterSalt(@PathVariable String masterUsername) {
+    return masterCredentialDao.getMasterSalt(masterUsername);
+  }
+
+  @GetMapping("get_auth/{masterUsername}/{masterPassword}")
+  public String get2FA(@PathVariable String masterUsername, @PathVariable String masterPassword) {
+    return masterCredentialDao.get2FA(masterUsername, masterPassword);
   }
 
   @PutMapping("add_master/{masterUsername}")

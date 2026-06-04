@@ -70,7 +70,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
     fetch(domainUrl, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(message.masterPassword)
     })
       .then(response => response.text())
       .then(data => {
@@ -86,7 +87,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
   else if (message.type === "GET_PASSWORDS") {
     console.log("GET_PASSWORDS message received");
-    const url = `http://localhost:8080/database/get_passwords/${message.masterUser}/${message.domain}`;
+    const url = `http://localhost:8080/database/get_passwords/${message.masterUser}/${message.domain}/${message.masterPassword}`;
 
     fetch(url)
       .then(response => response.text())
@@ -123,7 +124,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
   else if (message.type === "GET_MASTER") {
     console.log("GET_MASTER message received");
-    const url = `http://localhost:8080/database/get_master/${message.masterUser}`;
+    const url = `http://localhost:8080/database/get_master/${message.masterUser}/${message.masterPassword}`;
 
     fetch(url)
       .then(response => response.text())
@@ -138,9 +139,25 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     return true;
   }
 
+  else if (message.type === "GET_SALT") {
+    console.log("GET_SALT message received");
+    const url = `http://localhost:8080/database/get_salt/${message.masterUser}`;
+    fetch(url)
+    .then(response => response.text())
+    .then(data => {
+      sendResponse({ success: true, data: data });
+    })
+    .catch(error => {
+      console.error("Could not get salt for master user", error);
+      sendResponse({ success: false, error: error.message });
+    });
+
+    return true;
+  }
+
   else if (message.type === "GET_DOMAINS") {
     console.log("GET_DOMAINS message received");
-    const url = `http://localhost:8080/database/get_domains/${message.masterUser}`;
+    const url = `http://localhost:8080/database/get_domains/${message.masterUser}/${message.masterPassword}`;
 
     fetch(url)
       .then(response => response.text())

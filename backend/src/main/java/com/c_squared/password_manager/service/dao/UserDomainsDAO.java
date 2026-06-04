@@ -3,6 +3,7 @@ package com.c_squared.password_manager.service.dao;
 import java.util.Set;
 import java.util.HashSet;
 import java.util.Optional;
+import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.stereotype.Service;
 import com.c_squared.password_manager.repository.UserDomainsRepository;
 import com.c_squared.password_manager.model.UserDomains;
@@ -10,9 +11,12 @@ import com.c_squared.password_manager.model.UserDomains;
 @Service
 public class UserDomainsDAO {
   private final UserDomainsRepository userDomainsRepository;
+  private final MasterCredentialDAO masterCredentialDao;
 
-  public UserDomainsDAO(UserDomainsRepository userDomainsRepository) {
+  public UserDomainsDAO(UserDomainsRepository userDomainsRepository,
+                        MasterCredentialDAO masterCredentialDao) {
     this.userDomainsRepository = userDomainsRepository;
+    this.masterCredentialDao = masterCredentialDao;
   }
 
   /**
@@ -25,7 +29,11 @@ public class UserDomainsDAO {
    *                       least one login; may be empty if no such
    *                       domains are found
    */
-  public Set<String> getUserDomains(String masterUsername) {
+  public Set<String> getUserDomains(String masterUsername, String masterPassword) {
+    if (!checkAuthorized(masterUsername, masterPassword)) {
+      return null;
+    }
+
     Optional<UserDomains> domains = userDomainsRepository.findById(masterUsername);
     Set<String> userDomains = new HashSet<>();
     if (domains.isPresent()) {
@@ -34,7 +42,11 @@ public class UserDomainsDAO {
     return userDomains;
   }
 
-  public void addUserDomain(String masterUsername, String domain) {
+  public void addUserDomain(String masterUsername, String domain, String masterPassword) {
+    if (!checkAuthorized(masterUsername, masterPassword)) {
+      return;
+    }
+
     Optional<UserDomains> domains = userDomainsRepository.findById(masterUsername);
     if (domains.isPresent()) {
       UserDomains currDomains = domains.get();
@@ -46,5 +58,10 @@ public class UserDomainsDAO {
       UserDomains newDomain = new UserDomains(masterUsername, userDomains);
       userDomainsRepository.save(newDomain);
     }
+  }
+
+  private boolean checkAuthorized(String masterUsername, String masterPassword) {
+    // ensure user is authorized to do this
+    return masterCredentialDao.getMasterCredentials(masterUsername, masterPassword);
   }
 }

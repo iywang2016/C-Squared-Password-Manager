@@ -19,7 +19,7 @@ type EncryptionResult = {
  *  @param password - password to check
  *  @return string[] - list of issues with the given password. Empty means valid.
  */
-export async function determineStrength(password: string, masterUser?: string, masterKey?: CryptoKey): Promise<string[]> {
+export async function determineStrength(password: string, masterUser?: string, masterKey?: CryptoKey, masterPassword?: string): Promise<string[]> {
   const issues: string[] = [];
 
   if (password.length < MIN_PASSWORD_LENGTH) {
@@ -27,9 +27,9 @@ export async function determineStrength(password: string, masterUser?: string, m
   }
 
   checkZxcvbn(password, issues);
-
-  if (masterUser && masterKey) {
-    await checkPasswordUsed(masterUser, masterKey, password, issues);
+  
+  if (masterUser && masterKey && masterPassword) {
+    await checkPasswordUsed(masterUser, masterKey, masterPassword, password, issues);
   }
 
   if (await checkPwnedPasswords(password)) {
@@ -39,10 +39,11 @@ export async function determineStrength(password: string, masterUser?: string, m
   return issues;
 }
 
-async function checkPasswordUsed(masterUser: string, masterKey: CryptoKey, password: string, issues: string[]): Promise<void> {
+async function checkPasswordUsed(masterUser: string, masterKey: CryptoKey, masterPassword: string, password: string, issues: string[]): Promise<void> {
   const getDomainsMessage = {
     type: "GET_DOMAINS",
-    masterUser: masterUser
+    masterUser: masterUser,
+    masterPassword: masterPassword
   };
 
   const getDomainsResponse = await chrome.runtime.sendMessage(getDomainsMessage);
@@ -178,9 +179,6 @@ async function getHashSuffixes(hashPrefix: string): Promise<string[]> {
 
     let site: string = "https://api.pwnedpasswords.com/range/" + hashPrefix;
     const req: RequestInfo = new Request(site, { method: 'GET', headers: headers });
-    // return fetch(req)
-    //   .then(res => res.json())
-    //   .then(res => {return res as string[];}); // todo: prob need to modify - copied from example
     const result = fetch(site, req)
       .then(async resp => await resp.text())
       .then(data => data.split('\n'))
@@ -189,7 +187,6 @@ async function getHashSuffixes(hashPrefix: string): Promise<string[]> {
         return [];
       });
     return result;
-    // return resp.json().then(res => { return res as string[]; });
   } catch {
     console.error("Failed to access PwnedPasswords API");
     return [];
@@ -233,8 +230,8 @@ export function generateSalt(): Uint8Array {
  *   @returns CryptoKey - The AES-GCM 256-bit key
  */
 export async function deriveMasterKey(password: string, salt: Uint8Array): Promise<CryptoKey> {
+  console.error("\tINSIDE deriveMasterKey");
   const enc = new TextEncoder();
-
   // Just grab the raw password
   const keyMaterial = await window.crypto.subtle.importKey(
     "raw",
@@ -243,7 +240,7 @@ export async function deriveMasterKey(password: string, salt: Uint8Array): Promi
     false,
     ["deriveBits", "deriveKey"]
   );
-
+  console.error("\tDERIVING + RETURNING");
   // Derive the Master Key using PBKDF2
   return window.crypto.subtle.deriveKey(
     {

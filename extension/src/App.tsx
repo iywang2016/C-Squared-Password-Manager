@@ -9,7 +9,9 @@ import LoginList from './components/LoginList/LoginList';
 
 interface LoginState {
   masterUser?: string,
-  masterKey?: CryptoKey
+  masterKey?: CryptoKey,
+  saltedHashedPass?: string,
+  salt?: string
 };
 
 export const loginState : LoginState = {};
@@ -172,42 +174,20 @@ export default function App() {
       return;
     }
 
-    const getSaltMessage = {
-      type: "GET_MASTER",
-      masterUser: loginState.masterUser
-    };
-
-    const getSaltResponse = await chrome.runtime.sendMessage(getSaltMessage);
-
-    if (!getSaltResponse.success) {
-      setOutput("Could not fetch account information. Error: " + getSaltResponse.error);
-      return;
-    }
-
-    if (!getSaltResponse.data) {
-      setOutput("Could not find master username " + loginState.masterUser);
-      return;
-    }
-
-    const saltAndPass = new Map<string, string>(Object.entries(JSON.parse(getSaltResponse.data)));
-    const salt = saltAndPass.keys().next().value;
-    if (!salt) {
-      setOutput("Could not get salt for master username " + loginState.masterUser);
-      return;
-    }
-
     const encryptionResult = await encryptAES256(loginState.masterKey, password);
 
     const newLogin = {
       username: username,
       passwordAndIv: encryptionResult.encryptedPass + "#" + encryptionResult.iv,
+      masterPassword: loginState.saltedHashedPass
     }
 
     const addMessage = {
       type: "ADD_PASSWORD",
       masterUser: loginState.masterUser,
       domain: domain,
-      newLogin: newLogin
+      newLogin: newLogin,
+      masterPassword: loginState.saltedHashedPass
     };
 
     const response = await chrome.runtime.sendMessage(addMessage);
@@ -243,7 +223,7 @@ export default function App() {
           return;
         }
 
-        const issue = await determineStrength(password, loginState.masterUser, loginState.masterKey);
+        const issue = await determineStrength(password, loginState.masterUser, loginState.masterKey, loginState.saltedHashedPass);
         if (issue.length != 0) {
           setOutput("That was very shameful :(");
           setShowShame(true);
@@ -260,6 +240,8 @@ export default function App() {
   const handleLogOut = async () => {
     loginState.masterUser = undefined;
     loginState.masterKey = undefined;
+    loginState.salt = undefined;
+    loginState.saltedHashedPass = undefined;
     setLoggedInUser(undefined);
     setOutput("Welcome Back");
     setCurrentView('login');
@@ -448,7 +430,8 @@ export async function getPasswords(domain: string): Promise<Map<string, string> 
   const getMessage = {
     type: "GET_PASSWORDS",
     masterUser: loginState.masterUser,
-    domain: domain
+    domain: domain,
+    masterPassword: loginState.saltedHashedPass
   }
 
   const response = await chrome.runtime.sendMessage(getMessage);
