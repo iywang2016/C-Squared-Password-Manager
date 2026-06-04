@@ -12,7 +12,7 @@ interface LoginState {
   masterKey?: CryptoKey
 };
 
-export const loginState: LoginState = {};
+export const loginState : LoginState = {};
 
 export default function App() {
   const [isVisible, setIsVisible] = useState(false);
@@ -55,32 +55,6 @@ export default function App() {
     restoreSession();
   }, []);
 
-  window.addEventListener('beforeunload', () => {
-    const fields = findLoginFields();
-
-    if (!fields) {
-      return;
-    }
-
-    if (!fields.usernameField || !fields.passwordField) {
-      return;
-    }
-    if (!fields.usernameField.value || !fields.passwordField.value ||
-      fields.usernameField.value.length == 0 || fields.passwordField.value.length == 0) {
-      setOutput("You don't have a username and password filled in <:(");
-      return;
-    }
-
-    if (fields.passwordField.autocomplete.includes("current-password")) {
-      return;
-    }
-
-    const username = fields.usernameField.value;
-    const password = fields.passwordField.value;
-
-    handleSave(username, password);
-  });
-
   useEffect(() => {
     const handleMessage = (message: any) => {
       if (message.type === "TOGGLE_UI") {
@@ -105,11 +79,9 @@ export default function App() {
         const currentPassword = fields.passwordField.value;
 
         if (currentUsername !== oldUserPass.current.username ||
-          currentPassword !== oldUserPass.current.password) {
-          oldUserPass.current = {
-            username: currentUsername,
-            password: currentPassword
-          };
+            currentPassword !== oldUserPass.current.password) {
+          oldUserPass.current = { username: currentUsername,
+                                  password: currentPassword };
           lastChangeTime.current = Date.now();
           alreadyChecked.current = false;
         } else {
@@ -261,7 +233,7 @@ export default function App() {
           return;
         }
         if (!fields.usernameField.value || !fields.passwordField.value ||
-          fields.usernameField.value.length == 0 || fields.passwordField.value.length == 0) {
+            fields.usernameField.value.length == 0 || fields.passwordField.value.length == 0) {
           setOutput("You don't have a username and password filled in <:(");
           return;
         }
@@ -276,8 +248,6 @@ export default function App() {
           setOutput("That was very shameful :(");
           setShowShame(true);
           setIssues(issue);
-          const betterPassword = generatePassword();
-          fillField(fields.passwordField, betterPassword);
         } else {
           setShowShame(false);
         }
@@ -382,72 +352,92 @@ export default function App() {
           <p className="status-text">{output}</p>
           {!showShame ? (<div>
 
-            <div className="nav-container">
-              {!loggedInUser ? (
-                <>
-                  <button
-                    onClick={() => setCurrentView('login')}
-                    className={`nav-button ${currentView === 'login' ? 'active' : ''}`}
-                  >
-                    Login
-                  </button>
-                  <button
-                    onClick={() => setCurrentView('register')}
-                    className={`nav-button ${currentView === 'register' ? 'active' : ''}`}
-                  >
-                    Register
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    onClick={() => setCurrentView('autofill')}
-                    className={`nav-button ${currentView === 'autofill' ? 'active' : ''}`}
-                  >
-                    Autofill
-                  </button>
-                  <button
-                    onClick={() => setCurrentView('list')}
-                    className={`nav-button ${currentView === 'list' ? 'active' : ''}`}
-                  >
-                    List
-                  </button>
-                </>
-              )}
-            </div>
-
-            {currentView === 'login' && (
-              <Login onLoginSuccess={(user) => {
-                setOutput(`Welcome Back, ${user}`);
-                setLoggedInUser(user);
-                setCurrentView('list');
-              }} />
+          <div className="nav-container">
+            {!loggedInUser ? (
+              <>
+                <button
+                  onClick={() => setCurrentView('login')}
+                  className={`nav-button ${currentView === 'login' ? 'active' : ''}`}
+                >
+                  Login
+                </button>
+                <button
+                  onClick={() => setCurrentView('register')}
+                  className={`nav-button ${currentView === 'register' ? 'active' : ''}`}
+                >
+                  Register
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => setCurrentView('autofill')}
+                  className={`nav-button ${currentView === 'autofill' ? 'active' : ''}`}
+                >
+                  Autofill
+                </button>
+                <button
+                  onClick={() => setCurrentView('list')}
+                  className={`nav-button ${currentView === 'list' ? 'active' : ''}`}
+                >
+                  List
+                </button>
+              </>
             )}
-            {currentView === 'register' && (
-              <Register onRegisterSuccess={(user) => {
-                setOutput(`Welcome, ${user}`);
-                setLoggedInUser(user);
-                setCurrentView('list');
-              }} />
-            )}
+          </div>
 
-            {currentView === 'autofill' && (
+          {currentView === 'login' && (
+            <Login onLoginSuccess={(user) => {
+              setOutput(`Welcome Back, ${user}`);
+              setLoggedInUser(user);
+              setCurrentView('list');
+            }} />
+          )}
+          {currentView === 'register' && (
+            <Register onRegisterSuccess={(user) => {
+              setOutput(`Welcome, ${user}`);
+              setLoggedInUser(user);
+              setCurrentView('list');
+            }} />
+          )}
+
+          {currentView === 'autofill' && (
+            <div className="action-button-group">
               <button
                 className="autofill-button"
                 onClick={handleAutofill}
               >
                 Autofill Current Site
               </button>
-            )}
 
-            {currentView === 'list' && (
-              loggedInUser ? (
-                <LoginList masterUsername={loggedInUser} />
-              ) : (
-                <p className="status-text">Please log in to view your passwords.</p>
-              )
-            )}
-          </div>) : (<Shame setShame={setShowShame} issues={issues} />)}
+              <button
+                className="save-login-button"
+                onClick={() => {
+                  const fields = findLoginFields();
+                  if (fields && fields.usernameField && fields.passwordField) {
+                    if (!fields.usernameField.value || !fields.passwordField.value) {
+                      setOutput("Please fill in both username and password before saving.");
+                    } else {
+                      handleSave(fields.usernameField.value, fields.passwordField.value);
+                    }
+                  } else {
+                    setOutput("Couldn't find login fields on this page to save.");
+                  }
+                }}
+              >
+                Save Current Login
+              </button>
+            </div>
+          )}
+
+          {currentView === 'list' && (
+            loggedInUser ? (
+              <LoginList masterUsername={loggedInUser} />
+            ) : (
+              <p className="status-text">Please log in to view your passwords.</p>
+            )
+          )}
+          </div>) : (<Shame setShame={setShowShame} issues={issues}/>)}
         </div>
       </div>
     </div>

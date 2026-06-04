@@ -121,3 +121,25 @@
 .autofill-button:hover {
   background-color: #15803d;
 }
+
+.action-button-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.save-login-button {
+  width: 100%;
+  padding: 10px;
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.save-login-button:hover {
+  background-color: #2563eb;
+}
