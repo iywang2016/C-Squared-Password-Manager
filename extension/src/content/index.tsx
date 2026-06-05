@@ -1,8 +1,3 @@
-import { StrictMode } from 'react';
-import { createRoot } from 'react-dom/client';
-import App from '../App';
-import '../App.css';
-
 console.log("Content Scraper Script Loaded");
 
 /**
@@ -84,22 +79,3 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
   return true;
 });
-
-
-const rootDiv = document.createElement('div');
-rootDiv.id = 'c-squared-extension-root';
-rootDiv.style.position = 'fixed';
-rootDiv.style.top = '0';
-rootDiv.style.left = '0';
-rootDiv.style.width = '100vw';
-rootDiv.style.height = '100vh';
-rootDiv.style.pointerEvents = 'none';
-rootDiv.style.zIndex = '2147483647';
-document.body.appendChild(rootDiv);
-
-const root = createRoot(rootDiv);
-root.render(
-  <StrictMode>
-    <App />
-  </StrictMode>
-);

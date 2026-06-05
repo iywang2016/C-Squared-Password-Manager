@@ -175,15 +175,6 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   return true;
 });
 
-chrome.action.onClicked.addListener((tab) => {
-  if (tab.id) {
-    chrome.tabs.sendMessage(tab.id, { type: "TOGGLE_UI" }).catch((err) => {
-      console.log("Failed to load script and popup", err);
-    });
-  }
-});
-
-
 /**
  * determine the strength of the given password by length
  * @param password - password to check
@@ -207,14 +198,6 @@ function determineStrength(password: string): string[] {
  */
 async function hashPassword(input: string): Promise<string> {
   let salt: string = "";
-  // salting removed until DB connection
-  // if (!checkSaltExistAndValid()) {
-  //   salt = CSPRNG(SALT_LENGTH, 2);
-  //   console.log("NEW SALT TIME")
-  //   fs.writeFileSync(SALT_FILE_NAME, salt);
-  // } else {
-  //   salt = fs.readFileSync(SALT_FILE_NAME, 'utf8');
-  // }
   const ptUint8 = new TextEncoder().encode(salt + input)
   const hashedAndEncoded = await crypto.subtle.digest('SHA-256', ptUint8);
   const hashHex = Array.from(new Uint8Array(hashedAndEncoded))
@@ -222,23 +205,3 @@ async function hashPassword(input: string): Promise<string> {
     .join('');
   return hashHex;
 }
-
-// TODO: pull salt from DB and validate
-/**
- * checks salt exists and is correct length based on SALT_FILE_NAME and SALT_LENGTH
- * @returns false if not does not exist or is invalid; true otherwise
- */
-// function checkSaltExistAndValid() : boolean {
-//   if (!fs.existsSync(SALT_FILE_NAME)) {
-//     return false;
-//   }
-
-//   if (fs.existsSync(SALT_FILE_NAME)) {
-//     const fileContents = fs.readFileSync(SALT_FILE_NAME, 'utf-8');
-//     if (fileContents.length != SALT_LENGTH) {
-//       return false;
-//     }
-//     // possibly check valid characters?
-//   }
-//   return true;
-// }

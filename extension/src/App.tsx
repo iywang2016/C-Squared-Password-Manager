@@ -15,23 +15,17 @@ interface LoginState {
   salt?: string
 };
 
-export const loginState : LoginState = {};
+export const loginState: LoginState = {};
 
 export default function App() {
-  const [isVisible, setIsVisible] = useState(false);
   const [output, setOutput] = useState("Welcome Back");
-  const [position, setPosition] = useState({ x: 20, y: 20 });
-  const [isDragging, setIsDragging] = useState(false);
   const [showShame, setShowShame] = useState(false);
   const showShameRef = useRef(showShame);
   const [issues, setIssues] = useState<string[]>([]);
 
   const [loggedInUser, setLoggedInUser] = useState<string | undefined>(undefined);
   const [currentView, setCurrentView] = useState<'login' | 'register' | 'autofill' | 'list' | 'choose_login'>('login');
-  const [availableLogins, setAvailableLogins] = useState(new Map<string, string>);
-
-  const offset = useRef({ x: 0, y: 0 });
-  const popupRef = useRef<HTMLDivElement>(null);
+  const [availableLogins, setAvailableLogins] = useState(new Map<string, string>());
 
   const oldUserPass = useRef({ username: '', password: '' });
   const lastChangeTime = useRef<number>(Date.now());
@@ -60,17 +54,6 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const handleMessage = (message: any) => {
-      if (message.type === "TOGGLE_UI") {
-        setIsVisible((prev) => !prev);
-      }
-    };
-
-    chrome.runtime.onMessage.addListener(handleMessage);
-    return () => chrome.runtime.onMessage.removeListener(handleMessage);
-  }, []);
-
-  useEffect(() => {
     showShameRef.current = showShame;
   }, [showShame]);
 
@@ -83,9 +66,11 @@ export default function App() {
         const currentPassword = fields.passwordField.value;
 
         if (currentUsername !== oldUserPass.current.username ||
-            currentPassword !== oldUserPass.current.password) {
-          oldUserPass.current = { username: currentUsername,
-                                  password: currentPassword };
+          currentPassword !== oldUserPass.current.password) {
+          oldUserPass.current = {
+            username: currentUsername,
+            password: currentPassword
+          };
           lastChangeTime.current = Date.now();
           alreadyChecked.current = false;
         } else {
@@ -143,7 +128,7 @@ export default function App() {
     }
 
     const encryptionResult = loginsMap.get(chosenUser);
-    
+
     if (!encryptionResult) {
       console.error("Could not get login password value");
       return;
@@ -275,7 +260,7 @@ export default function App() {
           return;
         }
         if (!fields.usernameField.value || !fields.passwordField.value ||
-            fields.usernameField.value.length == 0 || fields.passwordField.value.length == 0) {
+          fields.usernameField.value.length == 0 || fields.passwordField.value.length == 0) {
           setOutput("You don't have a username and password filled in <:(");
           return;
         }
@@ -319,14 +304,6 @@ export default function App() {
     await chrome.runtime.sendMessage({ type: "LOGOUT" });
   }
 
-  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    setIsDragging(true);
-    offset.current = {
-      x: e.clientX - position.x,
-      y: e.clientY - position.y
-    };
-  };
-
   const replaceLoginFields = async (chosenUser: string, encryptionResult: string) => {
     const split = encryptionResult.split("#");
     const encryptedPass = split[0];
@@ -365,83 +342,27 @@ export default function App() {
     setCurrentView('autofill');
   }
 
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isDragging) return;
-
-      let newX = e.clientX - offset.current.x;
-      let newY = e.clientY - offset.current.y;
-
-      if (popupRef.current) {
-        const rect = popupRef.current.getBoundingClientRect();
-
-        const maxX = window.innerWidth - rect.width;
-        const maxY = window.innerHeight - rect.height;
-
-        newX = Math.max(0, Math.min(newX, maxX));
-        newY = Math.max(0, Math.min(newY, maxY));
-      }
-
-      setPosition({ x: newX, y: newY });
-    };
-
-    const handleMouseUp = () => {
-      setIsDragging(false);
-    };
-
-    if (isDragging) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
-    }
-
-    return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isDragging]);
-
-  if (!isVisible) {
-    return null;
-  }
-
   return (
-    <div
-      ref={popupRef}
-      className="floating-container"
-      style={{
-        left: `${position.x}px`,
-        top: `${position.y}px`,
-        position: 'fixed'
-      }}
-    >
-      <div className="drag-handle" onMouseDown={handleMouseDown}></div>
-      <div className="popup-content">
-        <div className="header-row">
-          <h2>C_Squared PM</h2>
+    <div className="popup-content">
+      <div className="header-row">
+        <h2>C_Squared PM</h2>
 
-          <div className="header-actions">
-            {loggedInUser && (
-              <button
-                onClick={() => handleLogOut()}
-                className="action-button logout-button"
-                aria-label="Log Out"
-              >
-                Log Out
-              </button>
-            )}
+        <div className="header-actions">
+          {loggedInUser && (
             <button
-              onClick={() => setIsVisible(false)}
-              className="action-button close-button"
-              aria-label="Close"
+              onClick={() => handleLogOut()}
+              className="action-button logout-button"
+              aria-label="Log Out"
             >
-              X
+              Log Out
             </button>
-          </div>
+          )}
         </div>
+      </div>
 
-        <div>
-          <p className="status-text">{output}</p>
-          {!showShame ? (<div>
+      <div>
+        <p className="status-text">{output}</p>
+        {!showShame ? (<div>
 
           <div className="nav-container">
             {!loggedInUser ? (
@@ -498,6 +419,7 @@ export default function App() {
 
               {Array.from(availableLogins.keys()).map((user) =>
                 <button
+                  key={user}
                   className="choose-login-button"
                   onClick={() => handleChooseLogin(user)}
                 >
@@ -543,8 +465,7 @@ export default function App() {
               <p className="status-text">Please log in to view your passwords.</p>
             )
           )}
-          </div>) : (<Shame setShame={setShowShame} issues={issues}/>)}
-        </div>
+        </div>) : (<Shame setShame={setShowShame} issues={issues} />)}
       </div>
     </div>
   );
