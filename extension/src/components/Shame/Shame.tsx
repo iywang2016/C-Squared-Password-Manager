@@ -45,6 +45,17 @@ export default function Shame(props:any) {
             onChange={(e) => {setFeedbackText(e.target.value);}}
             placeholder='Acknowledge here.'
           />
+          <div style={{ marginTop: '15px', textAlign: 'center' }}>
+            <p className="status-text" style={{ marginBottom: '8px' }}>
+              Or, let us fix it for you
+            </p>
+            <button
+              className="autofill-button"
+              onClick={props.onFixPassword}
+            >
+              Generate Strong Password
+            </button>
+          </div>
       </div>
     );
   } else {
