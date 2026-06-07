@@ -38,28 +38,6 @@ export default function App() {
   const alreadyChecked = useRef(false);
 
   useEffect(() => {
-    const restoreSession = async () => {
-      try {
-        const response = await chrome.runtime.sendMessage({ type: "CHECK_LOGIN_STATUS" });
-        if (response && response.isLoggedIn && response.username && response.key) {
-          loginState.masterUser = response.username;
-          loginState.masterKey = await importMasterKey(response.key);
-
-          setLoggedInUser(response.username);
-          setOutput(`Welcome Back, ${response.username}`);
-          setCurrentView('list');
-
-          console.log("Session successfully restored from background!");
-        }
-      } catch (error) {
-        console.log("No background session found or extension context invalidated.", error);
-      }
-    };
-
-    restoreSession();
-  }, []);
-
-  useEffect(() => {
     const handleMessage = (message: any) => {
       if (message.type === "TOGGLE_UI") {
         setIsVisible((prev) => !prev);
