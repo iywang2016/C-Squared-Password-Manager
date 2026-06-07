@@ -23,9 +23,11 @@ export default function Shame(props:any) {
     if (props.issues[i] === Constants.ISSUE_SHORT_PASS_PHRASE) {
       issueList.push("I understand my password was too short. I will use a length of at least " + Constants.MIN_PASSWORD_LENGTH + " characters.");
     } else if (props.issues[i] === Constants.ISSUE_SEQUENCE_PHRASE) {
-      issueList.push("I understand I should not use a sequence of numbers in my password.")
+      issueList.push("I understand I should not use a sequence of numbers in my password.");
+    } else if (props.issues[i] === Constants.ISSUE_REPEATED_PHRASE) {
+      issueList.push("I understand my password should not repeat a phrase.");
     } else if (props.issues[i] === Constants.ISSUE_REUSED_PASS) {
-      issueList.push("I understand I should not reuse passwords between accounts or between sites.")
+      issueList.push("I understand I should not reuse passwords between accounts or between sites.");
     }
   }
 
@@ -34,7 +36,7 @@ export default function Shame(props:any) {
       <div className="shame-text-input">
           <p className="shame-warning">
             Please acknowledge your password was weak.
-            Type "{issueList.join("")}" to proceed.
+            Type "{issueList.join("").trim()}" to proceed.
           </p>
           <textarea
             className="shame-textarea"
