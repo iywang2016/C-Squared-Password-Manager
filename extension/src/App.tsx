@@ -173,6 +173,10 @@ export default function App() {
       return;
     }
 
+    const shamed = await handleCheckPassword();
+    // If user is shameful, don't save the password
+    if (shamed) return;
+
     const getDomainsMessage = {
       type: "GET_DOMAINS",
       masterUser: loginState.masterUser,
@@ -276,10 +280,11 @@ export default function App() {
     }
   }
 
-  const handleCheckPassword = async () => {
+  // Return whether the user is shamed
+  const handleCheckPassword = async (): Promise<boolean> => {
     try {
       if (!loginState.masterUser || !loginState.masterKey) {
-        return;
+        return false;
       }
 
       const fields = findLoginFields();
@@ -287,17 +292,17 @@ export default function App() {
       if (fields) {
         if (!fields.usernameField || !fields.passwordField) {
           setOutput("Could not find username or password field");
-          return;
+          return false;
         }
         if (!fields.usernameField.value || !fields.passwordField.value ||
           fields.usernameField.value.length == 0 || fields.passwordField.value.length == 0) {
           setOutput("You don't have a username and password filled in <:(");
-          return;
+          return false;
         }
         const password = fields.passwordField.value;
 
         if (fields.passwordField.autocomplete.includes("current-password")) {
-          return;
+          return false;
         }
 
         const issue = await determineStrength(password, loginState.masterUser, loginState.masterKey, loginState.saltedHashedPass);
@@ -305,13 +310,16 @@ export default function App() {
           setOutput("That was very shameful :(");
           setShowShame(true);
           setIssues(issue);
+          return true;
         } else {
           setShowShame(false);
+          return false;
         }
       }
     } catch (error: any) {
       setOutput("Bad login do better next time >:( " + (error.message || "Unknown error"));
     }
+    return false;
   }
 
   const handleChooseLogin = async (chosenUser: string) => {

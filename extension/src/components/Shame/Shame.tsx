@@ -35,12 +35,14 @@ export default function Shame(props:any) {
     if (props.issues[i] === Constants.ISSUE_SHORT_PASS_PHRASE) {
       issueList.push("I understand my password was too short. I will use a length of at least " + Constants.MIN_PASSWORD_LENGTH + " characters.");
     } else if (props.issues[i] === Constants.ISSUE_SEQUENCE_PHRASE) {
-      issueList.push("I understand I should not use a sequence of numbers in my password.")
+      issueList.push("I understand I should not use a sequence of numbers in my password.");
+    } else if (props.issues[i] === Constants.ISSUE_REPEATED_PHRASE) {
+      issueList.push("I understand my password should not repeat a phrase.");
     } else if (props.issues[i] === Constants.ISSUE_REUSED_PASS) {
-      issueList.push("I understand I should not reuse passwords between accounts or between sites.")
+      issueList.push("I understand I should not reuse passwords between accounts or between sites.");
     }
   }
-  const shameSentence = issueList.join("")
+  const shameSentence = issueList.join("").trim();
 
   // tracing logic
   const [isTracing, setIsTracing] = useState(false);
@@ -292,6 +294,18 @@ export default function Shame(props:any) {
             </span>
           ))}
         </div>
+
+        <div style={{ marginTop: '15px', textAlign: 'center' }}>
+          <p className="status-text" style={{ marginBottom: '8px' }}>
+            Or, let us fix it for you
+          </p>
+          <button
+            className="autofill-button"
+            onClick={props.onFixPassword}
+          >
+            Generate Strong Password
+          </button>
+        </div>
       </div>
     );
   } else {
@@ -343,6 +357,17 @@ export default function Shame(props:any) {
                 </div>
               );
             })}
+          </div>
+          <div style={{ marginTop: '15px', textAlign: 'center' }}>
+            <p className="status-text" style={{ marginBottom: '8px' }}>
+              Or, let us fix it for you
+            </p>
+            <button
+              className="autofill-button"
+              onClick={props.onFixPassword}
+            >
+              Generate Strong Password
+            </button>
           </div>
         </div>
       );
