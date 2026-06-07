@@ -122,6 +122,24 @@
   background-color: #15803d;
 }
 
+.choose-login-button {
+  width: 100%;
+  padding: 10px;
+  margin: 5px;
+  background-color: #f8f9fa;
+  color: #202124;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.choose-login-button:hover {
+  background-color: #dcfce7;
+  color: #16a34a;
+  font-weight: 600;
+}
+
 .action-button-group {
   display: flex;
   flex-direction: column;

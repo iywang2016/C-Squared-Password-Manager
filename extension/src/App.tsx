@@ -6,6 +6,7 @@ import Login from './components/Login/Login';
 import Register from './components/Register/Register';
 import Shame from './components/Shame/Shame';
 import LoginList from './components/LoginList/LoginList';
+import * as Constants from './utils/constants';
 
 interface LoginState {
   masterUser?: string,
@@ -14,7 +15,7 @@ interface LoginState {
   salt?: string
 };
 
-export const loginState : LoginState = {};
+export const loginState: LoginState = {};
 
 export default function App() {
   const [isVisible, setIsVisible] = useState(false);
@@ -26,7 +27,8 @@ export default function App() {
   const [issues, setIssues] = useState<string[]>([]);
 
   const [loggedInUser, setLoggedInUser] = useState<string | undefined>(undefined);
-  const [currentView, setCurrentView] = useState<'login' | 'register' | 'autofill' | 'list'>('login');
+  const [currentView, setCurrentView] = useState<'login' | 'register' | 'autofill' | 'list' | 'choose_login'>('login');
+  const [availableLogins, setAvailableLogins] = useState(new Map<string, string>);
 
   const offset = useRef({ x: 0, y: 0 });
   const popupRef = useRef<HTMLDivElement>(null);
@@ -81,9 +83,11 @@ export default function App() {
         const currentPassword = fields.passwordField.value;
 
         if (currentUsername !== oldUserPass.current.username ||
-            currentPassword !== oldUserPass.current.password) {
-          oldUserPass.current = { username: currentUsername,
-                                  password: currentPassword };
+          currentPassword !== oldUserPass.current.password) {
+          oldUserPass.current = {
+            username: currentUsername,
+            password: currentPassword
+          };
           lastChangeTime.current = Date.now();
           alreadyChecked.current = false;
         } else {
@@ -100,6 +104,19 @@ export default function App() {
       }
     }, 1000);
   }, []);
+
+  const handleFixWeakPassword = () => {
+    const securePassword = generatePassword();
+    const fields = findLoginFields();
+
+    if (fields && fields.passwordField) {
+      fillField(fields.passwordField, securePassword);
+      setOutput("Successfully generated and autofilled a strong password!");
+      setShowShame(false);
+    } else {
+      setOutput("Could not find the password field to autofill.");
+    }
+  };
 
   const handleAutofill = async () => {
     if (!loginState.masterUser || !loginState.masterKey) {
@@ -126,45 +143,105 @@ export default function App() {
       return;
     }
 
-    const encryptionResult = loginsMap.values().next().value;
+    setAvailableLogins(loginsMap);
+
+    if (loginsMap.size > 1) {
+      setCurrentView("choose_login");
+      return;
+    }
+
+    const chosenUser = loginsMap.keys().next().value;
+
+    if (!chosenUser) {
+      console.error("Could not get login username value");
+      return;
+    }
+
+    const encryptionResult = loginsMap.get(chosenUser);
+
     if (!encryptionResult) {
       console.error("Could not get login password value");
       return;
     }
 
-    const split = encryptionResult.split("#");
-    const encryptedPass = split[0];
-    const iv = split[1];
-    const decryptedPass = await decryptAES256(loginState.masterKey, hex2buf(encryptedPass).buffer, hex2buf(iv));
-
-    const credentials = {
-      username: loginsMap.keys().next().value,
-      password: decryptedPass,
-    };
-
-    try {
-      const fields = findLoginFields();
-
-      if (fields) {
-        if (fields.usernameField && credentials.username) {
-          fillField(fields.usernameField, credentials.username);
-        }
-        if (fields.passwordField && credentials.password) {
-          fillField(fields.passwordField, credentials.password);
-        }
-        setOutput("Successful Autofill!");
-      } else {
-        setOutput("Bad autofill do better next time >:( Couldn't find fields");
-      }
-    } catch (error: any) {
-      setOutput("Bad login do better next time >:( " + (error.message || "Unknown error"));
-    }
+    await replaceLoginFields(chosenUser, encryptionResult);
   };
 
   const handleSave = async (username: string, password: string) => {
     if (!loginState.masterUser || !loginState.masterKey) {
       console.error("Must log in to save passwords!");
       return;
+    }
+
+    const getDomainsMessage = {
+      type: "GET_DOMAINS",
+      masterUser: loginState.masterUser,
+      masterPassword: loginState.saltedHashedPass
+    };
+    const domainsResponse = await chrome.runtime.sendMessage(getDomainsMessage);
+
+    if (!domainsResponse.success) {
+      throw new Error(domainsResponse.error || "Failed to fetch domains");
+    }
+
+    if (!domainsResponse.data) return [];
+
+    const domains: string[] = JSON.parse(domainsResponse.data);
+
+    const loginPromises = domains.map(async (domain) => {
+      const getPassMessage = {
+        type: "GET_PASSWORDS",
+        masterUser: loginState.masterUser,
+        domain: domain,
+        masterPassword: loginState.saltedHashedPass
+      };
+      const passResponse = await chrome.runtime.sendMessage(getPassMessage);
+
+      if (!passResponse.success) return [];
+
+      if (!passResponse.data) return [];
+
+      const userPassMap = JSON.parse(passResponse.data);
+      const entries = Object.entries(userPassMap);
+
+      const decryptedEntries = await Promise.all(entries.map(async ([username, passwordAndIv]) => {
+        const strPass = passwordAndIv as string;
+        const split = strPass.split("#");
+        const encryptedPass = split[0];
+        const iv = split[1];
+        let decryptedPass = "Error decrypting";
+
+        if (loginState.masterKey) {
+          try {
+            decryptedPass = await decryptAES256(
+              loginState.masterKey,
+              hex2buf(encryptedPass).buffer,
+              hex2buf(iv)
+            );
+          } catch (e) {
+            console.error("Failed to decrypt", e);
+          }
+        }
+
+        return {
+          domain,
+          username,
+          passwordAndIv: strPass,
+          decryptedPass
+        };
+      }));
+
+      return decryptedEntries;
+    });
+
+    const allLoginsArrays = await Promise.all(loginPromises);
+    const combinedLogins = allLoginsArrays.flat();
+    for (const login of combinedLogins) {
+      if (login.decryptedPass === password && login.username !== username) {
+        setShowShame(true);
+        setIssues([Constants.ISSUE_REUSED_PASS]);
+        return;
+      }
     }
 
     const domain = window.location.hostname;
@@ -213,7 +290,7 @@ export default function App() {
           return;
         }
         if (!fields.usernameField.value || !fields.passwordField.value ||
-            fields.usernameField.value.length == 0 || fields.passwordField.value.length == 0) {
+          fields.usernameField.value.length == 0 || fields.passwordField.value.length == 0) {
           setOutput("You don't have a username and password filled in <:(");
           return;
         }
@@ -237,6 +314,15 @@ export default function App() {
     }
   }
 
+  const handleChooseLogin = async (chosenUser: string) => {
+    for (const [user, encryptionResult] of availableLogins.entries()) {
+      if (user === chosenUser) {
+        availableLogins.clear();
+        replaceLoginFields(chosenUser, encryptionResult);
+      }
+    }
+  }
+
   const handleLogOut = async () => {
     loginState.masterUser = undefined;
     loginState.masterKey = undefined;
@@ -255,6 +341,44 @@ export default function App() {
       y: e.clientY - position.y
     };
   };
+
+  const replaceLoginFields = async (chosenUser: string, encryptionResult: string) => {
+    const split = encryptionResult.split("#");
+    const encryptedPass = split[0];
+    const iv = split[1];
+
+    if (!loginState.masterKey) {
+      console.error("Master key not found");
+      return;
+    }
+
+    const decryptedPass = await decryptAES256(loginState.masterKey, hex2buf(encryptedPass).buffer, hex2buf(iv));
+
+    const credentials = {
+      username: chosenUser,
+      password: decryptedPass,
+    };
+
+    try {
+      const fields = findLoginFields();
+
+      if (fields) {
+        if (fields.usernameField && credentials.username) {
+          fillField(fields.usernameField, credentials.username);
+        }
+        if (fields.passwordField && credentials.password) {
+          fillField(fields.passwordField, credentials.password);
+        }
+        setOutput("Successful Autofill!");
+      } else {
+        setOutput("Bad autofill do better next time >:( Couldn't find fields");
+      }
+    } catch (error: any) {
+      setOutput("Bad login do better next time >:( " + (error.message || "Unknown error"));
+    }
+
+    setCurrentView('autofill');
+  }
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -334,92 +458,108 @@ export default function App() {
           <p className="status-text">{output}</p>
           {!showShame ? (<div>
 
-          <div className="nav-container">
-            {!loggedInUser ? (
-              <>
-                <button
-                  onClick={() => setCurrentView('login')}
-                  className={`nav-button ${currentView === 'login' ? 'active' : ''}`}
-                >
-                  Login
-                </button>
-                <button
-                  onClick={() => setCurrentView('register')}
-                  className={`nav-button ${currentView === 'register' ? 'active' : ''}`}
-                >
-                  Register
-                </button>
-              </>
-            ) : (
-              <>
-                <button
-                  onClick={() => setCurrentView('autofill')}
-                  className={`nav-button ${currentView === 'autofill' ? 'active' : ''}`}
-                >
-                  Autofill
-                </button>
-                <button
-                  onClick={() => setCurrentView('list')}
-                  className={`nav-button ${currentView === 'list' ? 'active' : ''}`}
-                >
-                  List
-                </button>
-              </>
-            )}
-          </div>
-
-          {currentView === 'login' && (
-            <Login onLoginSuccess={(user) => {
-              setOutput(`Welcome Back, ${user}`);
-              setLoggedInUser(user);
-              setCurrentView('list');
-            }} />
-          )}
-          {currentView === 'register' && (
-            <Register onRegisterSuccess={(user) => {
-              setOutput(`Welcome, ${user}`);
-              setLoggedInUser(user);
-              setCurrentView('list');
-            }} />
-          )}
-
-          {currentView === 'autofill' && (
-            <div className="action-button-group">
-              <button
-                className="autofill-button"
-                onClick={handleAutofill}
-              >
-                Autofill Current Site
-              </button>
-
-              <button
-                className="save-login-button"
-                onClick={() => {
-                  const fields = findLoginFields();
-                  if (fields && fields.usernameField && fields.passwordField) {
-                    if (!fields.usernameField.value || !fields.passwordField.value) {
-                      setOutput("Please fill in both username and password before saving.");
-                    } else {
-                      handleSave(fields.usernameField.value, fields.passwordField.value);
-                    }
-                  } else {
-                    setOutput("Couldn't find login fields on this page to save.");
-                  }
-                }}
-              >
-                Save Current Login
-              </button>
+            <div className="nav-container">
+              {!loggedInUser ? (
+                <>
+                  <button
+                    onClick={() => setCurrentView('login')}
+                    className={`nav-button ${currentView === 'login' ? 'active' : ''}`}
+                  >
+                    Login
+                  </button>
+                  <button
+                    onClick={() => setCurrentView('register')}
+                    className={`nav-button ${currentView === 'register' ? 'active' : ''}`}
+                  >
+                    Register
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => setCurrentView('autofill')}
+                    className={`nav-button ${currentView === 'autofill' ? 'active' : ''}`}
+                  >
+                    Autofill
+                  </button>
+                  <button
+                    onClick={() => setCurrentView('list')}
+                    className={`nav-button ${currentView === 'list' ? 'active' : ''}`}
+                  >
+                    List
+                  </button>
+                </>
+              )}
             </div>
-          )}
 
-          {currentView === 'list' && (
-            loggedInUser ? (
-              <LoginList masterUsername={loggedInUser} saltedHashedPass={loginState.saltedHashedPass || ""} />
-            ) : (
-              <p className="status-text">Please log in to view your passwords.</p>
-            )
-          )}
-          </div>) : (<Shame setShame={setShowShame} issues={issues}/>)}
+            {currentView === 'login' && (
+              <Login onLoginSuccess={(user) => {
+                setOutput(`Welcome Back, ${user}`);
+                setLoggedInUser(user);
+                setCurrentView('list');
+              }} />
+            )}
+            {currentView === 'register' && (
+              <Register onRegisterSuccess={(user) => {
+                setOutput(`Welcome, ${user}`);
+                setLoggedInUser(user);
+                setCurrentView('list');
+              }} />
+            )}
+
+            {currentView === 'choose_login' && (
+              <div>
+                <p className="status-text">Choose the login whose information you want to autofill.</p>
+
+                {Array.from(availableLogins.keys()).map((user) =>
+                  <button
+                    key={user}
+                    className="choose-login-button"
+                    onClick={() => handleChooseLogin(user)}
+                  >
+                    {user}
+                  </button>
+                )}
+              </div>
+            )}
+
+            {currentView === 'autofill' && (
+              <div className="action-button-group">
+                <button
+                  className="autofill-button"
+                  onClick={handleAutofill}
+                >
+                  Autofill Current Site
+                </button>
+
+                <button
+                  className="save-login-button"
+                  onClick={() => {
+                    const fields = findLoginFields();
+                    if (fields && fields.usernameField && fields.passwordField) {
+                      if (!fields.usernameField.value || !fields.passwordField.value) {
+                        setOutput("Please fill in both username and password before saving.");
+                      } else {
+                        handleSave(fields.usernameField.value, fields.passwordField.value);
+                      }
+                    } else {
+                      setOutput("Couldn't find login fields on this page to save.");
+                    }
+                  }}
+                >
+                  Save Current Login
+                </button>
+              </div>
+            )}
+
+            {currentView === 'list' && (
+              loggedInUser ? (
+                <LoginList masterUsername={loggedInUser} saltedHashedPass={loginState.saltedHashedPass || ""} />
+              ) : (
+                <p className="status-text">Please log in to view your passwords.</p>
+              )
+            )}
+          </div>) : (<Shame setShame={setShowShame} issues={issues} onFixPassword={handleFixWeakPassword} />)}
         </div>
       </div>
     </div>
