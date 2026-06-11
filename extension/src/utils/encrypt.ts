@@ -39,6 +39,16 @@ export async function determineStrength(password: string, masterUser?: string, m
   return issues;
 }
 
+/**
+ * checks if this password has been used across other accounts stored in
+ * the password manager
+ * @param masterUser - master usename corresponding to password to check
+ * @param masterKey - master key corresponding to master username/password
+ * @param masterPassword - master password (salted and hashed)
+ * @param password - password whose security to check
+ * @param issues - list of strings of issues to be added to if any issues are found
+ * @returns void
+ */
 async function checkPasswordUsed(masterUser: string, masterKey: CryptoKey, masterPassword: string, password: string, issues: string[]): Promise<void> {
   const getDomainsMessage = {
     type: "GET_DOMAINS",
@@ -83,7 +93,7 @@ export function generatePassword(): string {
   return password;
 }
 
-/** TODO: IF WE WANT WE CAN ADD MORE CHECKS SINCE ZXCVBN RETURNS A LOT OF INFO
+/**
  * checks if the password is commonly guessed, or otherwise insecure
  * @param password - plaintext string of user's password to be checked
  * @param errors - string list of errors to add to
@@ -171,7 +181,6 @@ export function hasMatch(hashSuffix: string, res: string[]): boolean {
 async function getHashSuffixes(hashPrefix: string): Promise<string[]> {
   try {
     const headers: Headers = new Headers();
-    headers.set('Content-Type', 'application/json');
     headers.set('Accept', 'application/json');
     headers.set('Add-Padding', 'true'); // pads responses by random amount
 
@@ -228,7 +237,6 @@ export function generateSalt(): Uint8Array {
  *   @returns CryptoKey - The AES-GCM 256-bit key
  */
 export async function deriveMasterKey(password: string, salt: Uint8Array): Promise<CryptoKey> {
-  console.error("\tINSIDE deriveMasterKey");
   const enc = new TextEncoder();
   // Just grab the raw password
   const keyMaterial = await window.crypto.subtle.importKey(
@@ -238,7 +246,6 @@ export async function deriveMasterKey(password: string, salt: Uint8Array): Promi
     false,
     ["deriveBits", "deriveKey"]
   );
-  console.error("\tDERIVING + RETURNING");
   // Derive the Master Key using PBKDF2
   return window.crypto.subtle.deriveKey(
     {
