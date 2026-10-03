@@ -66,7 +66,7 @@ npm i && npm run build
 
 ## Usage
 ### Key Functionalities
-* Secure storage and retrieval of website credentials per-C_Squared account
+* Secure storage and retrieval of website credentials per C_Squared account
 * Selection between multiple saved logins per subdomain
 * Password security validation
 * Interactive, gamified reinforcement of secure password practices
@@ -78,4 +78,4 @@ npm i && npm run build
 * **Plaintext passwords will never reach vulnerable sinks.** Passwords for C_Squared accounts are salted and hashed with SHA-256; individual users' website login credentials are encrypted using AES-256.
 
 ### Demo
-<video src=https://github.com/user-attachments/assets/72f2bdbf-db09-43a7-bf42-8e4e9f9a8509 />
+<video src="https://github.com/user-attachments/assets/72f2bdbf-db09-43a7-bf42-8e4e9f9a8509"></video>
